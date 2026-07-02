@@ -1,0 +1,274 @@
+#region Prolog
+# ===============================================================================================================
+# Descrição:    Carrega dados CSV para o Cubo Mapa MAP.010.Produto
+# Responsável:  CTI Global (adaptado do template zCTI.Template.Carga.Arquivo.Para.Cubo.Mapa)
+# Data Criação: Julho/2026
+# ===============================================================================================================
+# PROLOG
+# ===============================================================================================================
+
+# Informações do cubo de Destino
+cCuboDestino = 'MAP.010.Produto';
+cDimDestino  = 'MAP.D.Produto';
+
+# Recupera o usuário que executou o processo
+cUsuario = IF( DimIx( '}Clients' , TM1User() ) = 0, 'Executed by Chore' , ATTRS('}Clients', TM1User(), '}TM1_DefaultDisplayValue') );
+
+# Variáveis de controle do processo
+cCuboParametro    = 'SYS.150.Controle_Cargas';
+cCuboPropriedade  = '}CubeProperties';
+cHorarioInicio    = Now();
+cProcesso         = GetProcessName();
+cMensagemRegistro = '';
+cMensagemProcesso = '';
+cExisteRegistroRejeitado  = 0;
+cExisteCabecalhoRejeitado = 0;
+cQtdRegistroRejeitado     = 0;
+cTipoErro                 = 0;
+cContadorRegistro         = 0;
+
+# Variáveis do cubo de controle
+cCaminhoArquivoFonte     = CellGetS( cCuboParametro , cProcesso , 'Caminho do Arquivo Fonte' );
+cCaminhoArquivoRejeitado = CellGetS( cCuboParametro , cProcesso , 'Caminho do Arquivo de Rejeitado' );
+cPrefixoArquivoFonte     = CellGetS( cCuboParametro , cProcesso , 'Prefixo do Arquivo' );
+cUtilizarDebug           = CellGetS( cCuboParametro , cProcesso , 'Debug (S/N)' );
+cGravarLogAlteracao      = CellGetS( cCuboParametro , cProcesso , 'Gerar Log de Alteração (S/N)' );
+
+cUtilizarDebug      = IF( cUtilizarDebug @= 'S' , 'S' , 'N' );
+cGravarLogAlteracao = IF( cGravarLogAlteracao @= 'S' , 'S' , 'N' );
+
+# Define variáveis locais de arquivo
+cDelimitadorArquivo = ';';
+cSeparadorMilhar    = '.';
+cSeparadorDecimal   = ',';
+
+DataSourceASCIIDelimiter          = cDelimitadorArquivo;
+DataSourceASCIIThousandSeparator  = cSeparadorMilhar;
+DataSourceASCIIDecimalSeparator   = cSeparadorDecimal;
+DataSourceQuoteCharacter          = '';
+
+# Define o Log inicial da carga como falha (garante log mesmo em falha inesperada)
+cMensagemProcesso = 'Processo com falha, contate o administrador para verificar os logs de erro do sistema' ;
+s01 = TimSt( cHorarioInicio , '\Y-\m-\d \hh\im\ss' );
+s02 = cUsuario ;
+s03 = cMensagemProcesso ;
+s04 = '0' ;
+s05 = TimSt( cHorarioInicio - Now, '\Y-\m-\d \hh\im\ss' );
+
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Inicio' );
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Fim' );
+CellPutS( s02 , cCuboParametro, cProcesso, 'Usuário' );
+CellPutS( s03 , cCuboParametro, cProcesso, 'Mensagem de Log' );
+CellPutS( s04 , cCuboParametro, cProcesso, 'Registros Processados' );
+CellPutS( s05 , cCuboParametro, cProcesso, 'Tempo de Execução' );
+
+# Define o nome dos arquivos
+sPrefixo         = cPrefixoArquivoFonte;
+cSufixoRejeitado = IF( cUtilizarDebug @= 'S' , 'Debug' , 'Reject' );
+cNomeArquivoFonte     = sPrefixo | '.csv';
+cNomeArquivoRejeitado = sPrefixo | '_' | cSufixoRejeitado | '.csv';
+
+# Aborta se o caminho do arquivo fonte não foi informado
+IF( cCaminhoArquivoFonte @= '' );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O caminho onde esta o arquivo fonte não foi informado, informe no cubo:   "' | cCuboParametro | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+# Aborta se o caminho do arquivo reject não foi informado
+IF( cCaminhoArquivoRejeitado @= '' );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O caminho onde deverá ser salvo o arquivo com registros rejeitados não foi informado, informe no cubo:   "' | cCuboParametro | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+# Insere "\" no final do caminho caso ainda não tenha
+cCaminhoArquivoFonte     = IF( SUBST( cCaminhoArquivoFonte , LONG( cCaminhoArquivoFonte ) , 1 ) @<> '\' , cCaminhoArquivoFonte | '\' , cCaminhoArquivoFonte );
+cCaminhoArquivoRejeitado = IF( SUBST( cCaminhoArquivoRejeitado , LONG( cCaminhoArquivoRejeitado ) , 1 ) @<> '\' , cCaminhoArquivoRejeitado | '\' , cCaminhoArquivoRejeitado );
+
+# Aborta se o diretório do arquivo fonte não existir
+IF( FileExists( cCaminhoArquivoFonte ) = 0 );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O diretório especificado para o arquivo fonte  "' | cCaminhoArquivoFonte | '"   não existe, informe no cubo:   "' | cCuboParametro | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+# Aborta se o diretório dos arquivos rejeitados não existir
+IF( FileExists( cCaminhoArquivoRejeitado ) = 0 );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O diretório especificado para o arquivo com registros rejeitados  "' | cCaminhoArquivoRejeitado | '"   não existe, informe no cubo:   "' | cCuboParametro | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+# Monta o caminho completo
+cNomeArquivoFonteCompleto     = cCaminhoArquivoFonte | cNomeArquivoFonte;
+cNomeArquivoRejeitadoCompleto = cCaminhoArquivoRejeitado | cNomeArquivoRejeitado;
+
+# Aborta se o arquivo fonte não existir na pasta de origem
+IF( FileExists( cNomeArquivoFonteCompleto ) = 0 );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O arquivo   "' | cNomeArquivoFonte | '"   não existe no diretorio:   "' | cCaminhoArquivoFonte | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+# Apaga o arquivo de reject caso exista
+IF( FileExists( cNomeArquivoRejeitadoCompleto ) = 1 );
+   ASCIIDelete( cNomeArquivoRejeitadoCompleto );
+ENDIF;
+
+# Define o arquivo fonte como a nova fonte de dados deste processo
+DatasourceNameForServer = cNomeArquivoFonteCompleto ;
+DatasourceNameForClient = cNomeArquivoFonteCompleto ;
+
+# Limpa dados do cubo de destino
+CubeClearData ( cCuboDestino );
+#endregion
+#region Metadata
+# ===============================================================================================================
+# Adiciona elementos (SKU) na dimensão principal do cubo mapa
+# ===============================================================================================================
+sElm = vSKU;
+sDim = 'MAP.D.Produto';
+
+If( sElm @<> '' & DimIx( sDim, sElm ) = 0 );
+    DimensionElementInsert( sDim, '', sElm, 'n' );
+EndIf;
+#endregion
+#region Data
+# ===============================================================================================================
+# Grava dados no cubo
+# ===============================================================================================================
+
+# Contador de registros
+cContadorRegistro = cContadorRegistro + 1;
+sContadorRegistro = NumberToString( cContadorRegistro );
+
+# Retira espaços em branco
+vSKU          = Trim( vSKU );
+vDescricao    = Trim( vDescricao );
+vCategoria    = Trim( vCategoria );
+vSubCategoria = Trim( vSubCategoria );
+vFamilia      = Trim( vFamilia );
+vMarca        = Trim( vMarca );
+vSabor        = Trim( vSabor );
+vApresentacao = Trim( vApresentacao );
+vProdRevd     = Trim( vProdRevd );
+vRetornavel   = Trim( vRetornavel );
+vEmbalagem    = Trim( vEmbalagem );
+
+# Pula o registro se todas as colunas estiverem vazias
+IF( '' @= vSKU
+  & '' @= vDescricao
+  & '' @= vCategoria
+  & '' @= vSubCategoria
+  & '' @= vFamilia
+  & '' @= vMarca
+  & '' @= vSabor
+  & '' @= vApresentacao
+  & '' @= vProdRevd
+  & '' @= vRetornavel
+  & '' @= vEmbalagem
+  );
+  ItemSkip;
+EndIf;
+
+# Rejeita se SKU (chave) estiver em branco
+sElm = vSKU;
+sCol = 'SKU';
+If( cExisteRegistroRejeitado = 0 );
+   If( sElm @= '' );
+      cMensagemRegistro = 'A coluna    [ ' | sCol | ' ]    está em branco e é obrigatório ter algum valor';
+      cExisteRegistroRejeitado = 1;
+   EndIf;
+EndIf;
+
+# Rejeita se Descrição estiver em branco
+sElm = vDescricao;
+sCol = 'Descrição';
+If( cExisteRegistroRejeitado = 0 );
+   If( sElm @= '' );
+      cMensagemRegistro = 'A coluna    [ ' | sCol | ' ]    está em branco e é obrigatório ter algum valor';
+      cExisteRegistroRejeitado = 1;
+   EndIf;
+EndIf;
+
+# Rejeita se o registro estiver duplicado no arquivo
+If( cExisteRegistroRejeitado = 0 );
+  sDuplic = CellGetS( cCuboDestino, vSKU, 'Data Atualização' );
+   If ( sDuplic @<> '' );
+      cExisteRegistroRejeitado = 1;
+      cMensagemRegistro = 'Registro duplicado no arquivo fonte.';
+   EndIf;
+EndIf;
+
+# DEBUG ou REJEIÇÃO
+If( cExisteRegistroRejeitado = 1  %  cUtilizarDebug @= 'S' );
+
+  # Cabeçalho do arquivo de rejeitados (uma única vez)
+  If( cExisteCabecalhoRejeitado = 0);
+    AsciiOutput( cNomeArquivoRejeitadoCompleto , 'SKU' , 'Descrição' , 'Categoria' , 'SubCategoria' , 'Família' , 'Marca' , 'Sabor' , 'Apresentação' , 'ProdRevd' , 'Retornável' , 'Embalagem' , 'Num. Registro' , 'Mensagem de Erro');
+    cExisteCabecalhoRejeitado = 1;
+    cTipoErro = 2;
+    If( cUtilizarDebug @= 'S'  );
+      cMensagemProcesso = ' Processo concluido com registros salvos no arquivo de Debug, verificar o arquivo:    ' | cNomeArquivoRejeitadoCompleto;
+    EndIf;
+  EndIf;
+
+  # Escreve o registro no arquivo de debug/rejeitados
+  AsciiOutput( cNomeArquivoRejeitadoCompleto , vSKU , vDescricao , vCategoria , vSubCategoria , vFamilia , vMarca , vSabor , vApresentacao , vProdRevd , vRetornavel , vEmbalagem , sContadorRegistro , cMensagemRegistro );
+
+  # Limpa variáveis e pula o registro rejeitado
+  IF( cExisteRegistroRejeitado = 1 );
+     cExisteRegistroRejeitado = 0;
+     cMensagemRegistro = '';
+     cMensagemProcesso = ' Processo concluido com registros rejeitados, verificar o arquivo:    ' | cNomeArquivoRejeitadoCompleto;
+     ItemSkip;
+  EndIf;
+
+EndIf;
+
+# Grava os dados no cubo
+CellPutS ( vDescricao    , cCuboDestino, vSKU, 'Descrição' );
+CellPutS ( vCategoria    , cCuboDestino, vSKU, 'Categoria' );
+CellPutS ( vSubCategoria , cCuboDestino, vSKU, 'SubCategoria' );
+CellPutS ( vFamilia      , cCuboDestino, vSKU, 'Família' );
+CellPutS ( vMarca        , cCuboDestino, vSKU, 'Marca' );
+CellPutS ( vSabor        , cCuboDestino, vSKU, 'Sabor' );
+CellPutS ( vApresentacao , cCuboDestino, vSKU, 'Apresentação' );
+CellPutS ( vProdRevd     , cCuboDestino, vSKU, 'Produção ou Revenda' );
+CellPutS ( vRetornavel   , cCuboDestino, vSKU, 'Retornável' );
+CellPutS ( vEmbalagem    , cCuboDestino, vSKU, 'Embalagem' );
+CellPutS ( TimSt( cHorarioInicio , '\Y-\m-\d \hh\im\ss' ), cCuboDestino, vSKU, 'Data Atualização' );
+#endregion
+#region Epilog
+# ===============================================================================================================
+# Habilita log do cubo de destino, CubeSaveData e registra log de status
+# ===============================================================================================================
+CellPutS ( 'YES', cCuboPropriedade, cCuboDestino, 'LOGGING' );
+CubeSaveData ( cCuboDestino );
+
+If( cTipoErro = 0 );
+   cMensagemProcesso = ' Processo concluído com sucesso';
+EndIf;
+
+s01 = TimSt( cHorarioInicio , '\Y-\m-\d \hh\im\ss' );
+s02 = cUsuario ;
+s03 = cMensagemProcesso ;
+s04 = sContadorRegistro ;
+s05 = TimSt( Now - cHorarioInicio, ' \h:\i:\s') ;
+
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Fim' );
+CellPutS( s02 , cCuboParametro, cProcesso, 'Usuário' );
+CellPutS( s03 , cCuboParametro, cProcesso, 'Mensagem de Log' );
+CellPutS( s04 , cCuboParametro, cProcesso, 'Registros Processados' );
+CellPutS( s05 , cCuboParametro, cProcesso, 'Tempo de Execução' );
+
+If( cTipoErro = 2 );
+  ItemReject( cMensagemProcesso );
+EndIf;
+#endregion

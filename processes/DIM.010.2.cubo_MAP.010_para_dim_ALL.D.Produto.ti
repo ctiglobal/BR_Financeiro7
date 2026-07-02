@@ -1,0 +1,108 @@
+#region Prolog
+# ===============================================================================================================
+# Descrição:   Atualiza a dimensão ALL.D.Produto a partir do cubo mapa MAP.010.Produto
+#              Duas hierarquias de topo independentes na hierarquia default:
+#                Total SKU        -> SKU (folha)
+#                Total Categoria  -> Categoria (C) -> SKU (folha)
+# Responsável: CTI Global (base: zCTI.Template.Carga.Cubo.Mapa.Para.Dimensao.Balanceada)
+# Data Criação: Julho/2026
+# ===============================================================================================================
+
+# Informações da dimensão e cubo mapa
+cDimensao          = 'ALL.D.Produto';
+cCuboMapa          = 'MAP.010.Produto';
+cTotalizadorSku    = 'Total SKU';
+cTotalizadorCateg  = 'Total Categoria';
+
+# Recupera o usuário que executou o processo
+cUsuario = IF( DimIx( '}Clients' , TM1User() ) = 0, 'Executed by Chore' , ATTRS('}Clients', TM1User(), '}TM1_DefaultDisplayValue') );
+
+# Variáveis de controle do processo
+cCuboParametro    = 'SYS.150.Controle_Cargas';
+cHorarioInicio    = Now();
+cProcesso         = GetProcessName();
+cMensagemProcesso = '';
+cContadorRegistro = 0;
+
+# Log inicial da carga como falha (garante log mesmo em falha inesperada)
+cMensagemProcesso = 'Processo com falha, contate o administrador para verificar os logs de erro do sistema' ;
+s01 = TimSt( cHorarioInicio , '\Y-\m-\d \hh\im\ss' );
+s02 = cUsuario ;
+s03 = cMensagemProcesso ;
+s04 = '0' ;
+s05 = TimSt( cHorarioInicio - Now, '\Y-\m-\d \hh\im\ss' );
+
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Inicio' );
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Fim' );
+CellPutS( s02 , cCuboParametro, cProcesso, 'Usuário' );
+CellPutS( s03 , cCuboParametro, cProcesso, 'Mensagem de Log' );
+CellPutS( s04 , cCuboParametro, cProcesso, 'Registros Processados' );
+CellPutS( s05 , cCuboParametro, cProcesso, 'Tempo de Execução' );
+
+# Limpa todos os consolidados da dimensão (torna o processo re-executável sem duplicar)
+vElemento = DimSiz( cDimensao );
+vCount = vElemento;
+WHILE( vCount <> 0 );
+   vElementoN = DimNm( cDimensao, vCount );
+   IF( DTYPE( cDimensao, vElementoN ) @= 'C' );
+      DimensionElementDelete( cDimensao, vElementoN );
+   ENDIF;
+   vCount = vCount - 1;
+END;
+
+# Insere os dois totalizadores de topo
+DimensionElementInsert( cDimensao, '', cTotalizadorSku, 'C' );
+DimensionElementInsert( cDimensao, '', cTotalizadorCateg, 'C' );
+
+# Define a ordem da dimensão
+DimensionSortOrder( cDimensao, 'ByName', 'Ascending', 'ByHierarchy' , 'Ascending' );
+#endregion
+#region Metadata
+# ===============================================================================================================
+# Monta as duas hierarquias de topo
+# ===============================================================================================================
+sElm = vSKU;
+sDim = cDimensao;
+
+# Pula linha sem SKU
+If( sElm @= '' );
+   ItemSkip;
+EndIf;
+
+# Busca a categoria do SKU no cubo mapa
+sCategoria = CellGetS( cCuboMapa, sElm, 'Categoria' );
+
+# Ramo 1: Total SKU -> SKU (folha)
+DimensionElementComponentAdd( sDim, cTotalizadorSku, sElm, 1 );
+
+# Ramo 2: Total Categoria -> Categoria (C) -> SKU (folha)
+If( sCategoria @<> '' );
+   DimensionElementComponentAdd( sDim, cTotalizadorCateg, sCategoria, 1 );
+   DimensionElementComponentAdd( sDim, sCategoria, sElm, 1 );
+EndIf;
+#endregion
+#region Data
+# ===============================================================================================================
+# Contador de registros processados
+# ===============================================================================================================
+cContadorRegistro = cContadorRegistro + 1;
+sContadorRegistro = NumberToString( cContadorRegistro );
+#endregion
+#region Epilog
+# ===============================================================================================================
+# Registra o Log de Sucesso no Cubo de Controle
+# ===============================================================================================================
+cMensagemProcesso = ' Processo concluído com sucesso';
+
+s01 = TimSt( cHorarioInicio , '\Y-\m-\d \hh\im\ss' );
+s02 = cUsuario ;
+s03 = cMensagemProcesso ;
+s04 = sContadorRegistro ;
+s05 = TimSt( Now - cHorarioInicio, ' \h:\i:\s') ;
+
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Fim' );
+CellPutS( s02 , cCuboParametro, cProcesso, 'Usuário' );
+CellPutS( s03 , cCuboParametro, cProcesso, 'Mensagem de Log' );
+CellPutS( s04 , cCuboParametro, cProcesso, 'Registros Processados' );
+CellPutS( s05 , cCuboParametro, cProcesso, 'Tempo de Execução' );
+#endregion

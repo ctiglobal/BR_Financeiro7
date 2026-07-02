@@ -1,0 +1,258 @@
+{
+	"@type":"Hierarchy",
+	"Name":"ALL.D.Estado",
+	"Elements":
+	[
+		{
+			"Name":"Total UF",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"AC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AL",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AP",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AM",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"BA",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"CE",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"DF",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"ES",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"GO",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"MA",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"MT",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"MS",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"MG",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PA",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PB",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PE",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PI",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"RJ",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"RN",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"RS",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"RO",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"RR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"SC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"SP",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"SE",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"TO",
+			"Type":"Numeric"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"AC",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"AL",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"AP",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"AM",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"BA",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"CE",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"DF",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"ES",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"GO",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"MA",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"MT",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"MS",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"MG",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"PA",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"PB",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"PR",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"PE",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"PI",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"RJ",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"RN",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"RS",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"RO",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"RR",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"SC",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"SP",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"SE",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total UF",
+			"ComponentName":"TO",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":[]
+}

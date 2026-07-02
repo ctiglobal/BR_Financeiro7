@@ -1,0 +1,427 @@
+#region Prolog
+# ===============================================================================================================
+# Descrição:   Carrega dados CSV (Realizado) para o cubo REC.100.Receita
+#              Escopo filtrado por parâmetros pVersao / pAno / pMes.
+# Responsável: CTI Global (base: zCTI.Template.Carga.Arquivo.Para.Cubo)
+# Data Criação: Julho/2026
+# ===============================================================================================================
+# PROLOG
+# ===============================================================================================================
+
+# Informações do cubo de Destino
+cCuboDestino = 'REC.100.Receita';
+
+# Recupera o usuário que executou o processo
+cUsuario = IF( DimIx( '}Clients' , TM1User() ) = 0, 'Executed by Chore' , ATTRS('}Clients', TM1User(), '}TM1_DefaultDisplayValue') );
+
+# Variáveis de controle do processo
+cCuboParametro    = 'SYS.150.Controle_Cargas';
+cCuboPropriedade  = '}CubeProperties';
+cHorarioInicio    = Now();
+cProcesso         = GetProcessName();
+cMensagemRegistro = '';
+cMensagemProcesso = '';
+cExisteRegistroRejeitado  = 0;
+cExisteCabecalhoRejeitado = 0;
+cQtdRegistroRejeitado     = 0;
+cTipoErro                 = 0;
+cContadorRegistro         = 0;
+
+# Variáveis do cubo de controle
+cCaminhoArquivoFonte     = CellGetS( cCuboParametro , cProcesso , 'Caminho do Arquivo Fonte' );
+cCaminhoArquivoRejeitado = CellGetS( cCuboParametro , cProcesso , 'Caminho do Arquivo de Rejeitado' );
+cPrefixoArquivoFonte     = CellGetS( cCuboParametro , cProcesso , 'Prefixo do Arquivo' );
+cUtilizarDebug           = CellGetS( cCuboParametro , cProcesso , 'Debug (S/N)' );
+cGravarLogAlteracao      = CellGetS( cCuboParametro , cProcesso , 'Gerar Log de Alteração (S/N)' );
+
+cUtilizarDebug      = IF( cUtilizarDebug @= 'S' , 'S' , 'N' );
+cGravarLogAlteracao = IF( cGravarLogAlteracao @= 'S' , 'S' , 'N' );
+
+# Define variáveis locais de arquivo
+cDelimitadorArquivo = ';';
+cSeparadorMilhar    = '.';
+cSeparadorDecimal   = ',';
+
+DataSourceASCIIDelimiter         = cDelimitadorArquivo;
+DataSourceASCIIThousandSeparator = cSeparadorMilhar;
+DataSourceASCIIDecimalSeparator  = cSeparadorDecimal;
+DataSourceQuoteCharacter         = '';
+
+# Log inicial da carga como falha
+cMensagemProcesso = 'Processo com falha, contate o administrador para verificar os logs de erro do sistema' ;
+s01 = TimSt( cHorarioInicio , '\Y-\m-\d \hh\im\ss' );
+s02 = cUsuario ;
+s03 = cMensagemProcesso ;
+s04 = '0' ;
+s05 = TimSt( cHorarioInicio - Now, '\Y-\m-\d \hh\im\ss' );
+
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Inicio' );
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Fim' );
+CellPutS( s02 , cCuboParametro, cProcesso, 'Usuário' );
+CellPutS( s03 , cCuboParametro, cProcesso, 'Mensagem de Log' );
+CellPutS( s04 , cCuboParametro, cProcesso, 'Registros Processados' );
+CellPutS( s05 , cCuboParametro, cProcesso, 'Tempo de Execução' );
+
+# =================================================================================
+# Validação dos parâmetros (essenciais para execução)
+# =================================================================================
+
+# Parâmetro Ano
+sDim = 'ALL.D.Ano';
+sElm = pAno;
+If( Trim( sElm ) @= '' );
+   cTipoErro = 1;
+   DataSourceType = 'NULL';
+   cMensagemProcesso = 'O parâmetro Ano não foi informado' ;
+   ItemReject( cMensagemProcesso );
+ElseIf( DimIx( sDim , sElm ) = 0 );
+   cTipoErro = 1;
+   DataSourceType = 'NULL';
+   cMensagemProcesso = 'O parâmetro Ano [ ' | sElm | ' ] não existe na dimensão [ ' | sDim | ' ]';
+   ItemReject( cMensagemProcesso );
+EndIf;
+
+# Parâmetro Mes
+sDim = 'ALL.D.Mes';
+sElm = pMes;
+If( Trim( sElm ) @= '' );
+   cTipoErro = 1;
+   DataSourceType = 'NULL';
+   cMensagemProcesso = 'O parâmetro Mes não foi informado' ;
+   ItemReject( cMensagemProcesso );
+ElseIf( DimIx( sDim , sElm ) = 0 );
+   cTipoErro = 1;
+   DataSourceType = 'NULL';
+   cMensagemProcesso = 'O parâmetro Mes [ ' | sElm | ' ] não existe na dimensão [ ' | sDim | ' ]';
+   ItemReject( cMensagemProcesso );
+EndIf;
+
+# Parâmetro Versao
+sDim = 'ALL.D.Versao';
+sElm = pVersao;
+If( Trim( sElm ) @= '' );
+   cTipoErro = 1;
+   DataSourceType = 'NULL';
+   cMensagemProcesso = 'O parâmetro Versao não foi informado' ;
+   ItemReject( cMensagemProcesso );
+ElseIf( DimIx( sDim , sElm ) = 0 );
+   cTipoErro = 1;
+   DataSourceType = 'NULL';
+   cMensagemProcesso = 'O parâmetro Versao [ ' | sElm | ' ] não existe na dimensão [ ' | sDim | ' ]';
+   ItemReject( cMensagemProcesso );
+EndIf;
+
+# =================================================================================
+# Validação do arquivo de origem e pasta
+# =================================================================================
+sPrefixo         = cPrefixoArquivoFonte;
+cSufixoRejeitado = IF( cUtilizarDebug @= 'S' , 'Debug' , 'Reject' );
+
+# Opção 1: o "Prefixo do Arquivo" no cubo de controle contêm o nome literal do arquivo (sem extensão).
+# Ex.: Prefixo = 'Base_Realizado_Receita_2026_01'  ->  arquivo 'Base_Realizado_Receita_2026_01.csv'
+cNomeArquivoFonte     = sPrefixo| '_' | pAno| '_' | pMes | '.csv';
+cNomeArquivoRejeitado = sPrefixo | '_' | cSufixoRejeitado | '.csv';
+
+IF( cCaminhoArquivoFonte @= '' );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O caminho onde esta o arquivo fonte não foi informado, informe no cubo:   "' | cCuboParametro | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+IF( cCaminhoArquivoRejeitado @= '' );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O caminho onde deverá ser salvo o arquivo com registros rejeitados não foi informado, informe no cubo:   "' | cCuboParametro | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+cCaminhoArquivoFonte     = IF( SUBST( cCaminhoArquivoFonte , LONG( cCaminhoArquivoFonte ) , 1 ) @<> '\' , cCaminhoArquivoFonte | '\' , cCaminhoArquivoFonte );
+cCaminhoArquivoRejeitado = IF( SUBST( cCaminhoArquivoRejeitado , LONG( cCaminhoArquivoRejeitado ) , 1 ) @<> '\' , cCaminhoArquivoRejeitado | '\' , cCaminhoArquivoRejeitado );
+
+IF( FileExists( cCaminhoArquivoFonte ) = 0 );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O diretório especificado para o arquivo fonte  "' | cCaminhoArquivoFonte | '"   não existe, informe no cubo:   "' | cCuboParametro | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+IF( FileExists( cCaminhoArquivoRejeitado ) = 0 );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O diretório especificado para o arquivo com registros rejeitados  "' | cCaminhoArquivoRejeitado | '"   não existe, informe no cubo:   "' | cCuboParametro | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+cNomeArquivoFonteCompleto     = cCaminhoArquivoFonte | cNomeArquivoFonte;
+cNomeArquivoRejeitadoCompleto = cCaminhoArquivoRejeitado | cNomeArquivoRejeitado;
+
+IF( FileExists( cNomeArquivoFonteCompleto ) = 0 );
+   cTipoErro = 1;
+   cMensagemProcesso = 'O arquivo   "' | cNomeArquivoFonte | '"   não existe no diretorio:   "' | cCaminhoArquivoFonte | '"' ;
+   DataSourceType = 'NULL';
+   ItemReject( cMensagemProcesso );
+ENDIF;
+
+IF( FileExists( cNomeArquivoRejeitadoCompleto ) = 1 );
+   ASCIIDelete( cNomeArquivoRejeitadoCompleto );
+ENDIF;
+
+# Define o arquivo fonte como a nova fonte de dados
+DatasourceNameForServer = cNomeArquivoFonteCompleto ;
+DatasourceNameForClient = cNomeArquivoFonteCompleto ;
+
+# =================================================================================
+# View de limpeza do recorte (Ano/Mes/Versao) — carga incremental
+# =================================================================================
+cSuprimirConsolidado      = 'S';
+cSuprimirZero             = 'S';
+cSuprimirCamposCalculados = 'S';
+cViewTemporaria           = 'S';
+nViewTemporaria           = If( cViewTemporaria @= 'S', 1, 0);
+
+sLog = IF ( cGravarLogAlteracao @= 'N', 'NO', 'YES' );
+CellPutS( sLog, cCuboPropriedade, cCuboDestino, 'LOGGING' );
+
+cViewDestino   = 'processo.' | cProcesso | '.Limpeza.' | TimSt( cHorarioInicio, '\Y-\m-\d \hh\im\ss' );
+cSubsetDestino = cViewDestino;
+
+ViewCreate( cCuboDestino , cViewDestino , nViewTemporaria );
+
+cDimensao = 'ALL.D.Ano';
+cElemento = pAno;
+SubsetCreate( cDimensao, cSubsetDestino , nViewTemporaria );
+ViewSubsetAssign( cCuboDestino , cViewDestino, cDimensao , cSubsetDestino );
+SubsetElementInsert( cDimensao, cSubsetDestino, cElemento , 1 );
+
+cDimensao = 'ALL.D.Mes';
+cElemento = pMes;
+SubsetCreate( cDimensao, cSubsetDestino , nViewTemporaria );
+ViewSubsetAssign( cCuboDestino , cViewDestino, cDimensao , cSubsetDestino );
+SubsetElementInsert( cDimensao, cSubsetDestino, cElemento , 1 );
+
+cDimensao = 'ALL.D.Versao';
+cElemento = pVersao;
+SubsetCreate( cDimensao, cSubsetDestino , nViewTemporaria );
+ViewSubsetAssign( cCuboDestino , cViewDestino, cDimensao , cSubsetDestino );
+SubsetElementInsert( cDimensao, cSubsetDestino, cElemento , 1 );
+
+ViewExtractSkipCalcsSet( cCuboDestino, cViewDestino, If( cSuprimirConsolidado @= 'S', 1, 0) );
+ViewExtractSkipZeroesSet( cCuboDestino, cViewDestino, If( cSuprimirZero @= 'S', 1, 0) );
+ViewExtractSkipRuleValuesSet( cCuboDestino, cViewDestino, If( cSuprimirCamposCalculados @= 'S', 1, 0) );
+
+ViewZeroOut( cCuboDestino , cViewDestino );
+#endregion
+#region Data
+# ===============================================================================================================
+# Grava dados no cubo
+# ===============================================================================================================
+
+# Contador
+cContadorRegistro = cContadorRegistro + 1;
+sContadorRegistro = NumberToString( cContadorRegistro );
+
+# Retira espaços em branco das chaves
+vAno         = Trim( vAno );
+vMes         = Trim( vMes );
+vCod_Produto = Trim( vCod_Produto );
+vEstado      = Trim( vEstado );
+vCanal       = Trim( vCanal );
+
+# Trata valores '-' como 0
+vVolume_Vendas = If ( Trim(vVolume_Vendas) @= '-', '0', Trim(vVolume_Vendas) );
+vReceita_Bruta = If ( Trim(vReceita_Bruta) @= '-', '0', Trim(vReceita_Bruta) );
+vDesconto      = If ( Trim(vDesconto)      @= '-', '0', Trim(vDesconto) );
+vDevolucao     = If ( Trim(vDevolucao)     @= '-', '0', Trim(vDevolucao) );
+vICMS          = If ( Trim(vICMS)          @= '-', '0', Trim(vICMS) );
+vIPI           = If ( Trim(vIPI)           @= '-', '0', Trim(vIPI) );
+vPIS           = If ( Trim(vPIS)           @= '-', '0', Trim(vPIS) );
+vCOFINS        = If ( Trim(vCOFINS)        @= '-', '0', Trim(vCOFINS) );
+vFrete         = If ( Trim(vFrete)         @= '-', '0', Trim(vFrete) );
+
+# Pula linha totalmente vazia
+IF( '' @= vAno & '' @= vMes & '' @= vCod_Produto & '' @= vEstado & '' @= vCanal
+  & '' @= vVolume_Vendas & '' @= vReceita_Bruta & '' @= vDesconto & '' @= vDevolucao
+  & '' @= vICMS & '' @= vIPI & '' @= vPIS & '' @= vCOFINS & '' @= vFrete );
+  ItemSkip;
+EndIf;
+
+# --- Validação das chaves: branco / inexistente / totalizador ---
+
+sDim = 'ALL.D.Ano';
+sElm = vAno;
+sCol = 'Ano';
+If( cExisteRegistroRejeitado = 0 );
+   If( sElm @= '' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] está em branco e é obrigatória';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( DimIx( sDim , sElm ) = 0 );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o valor [ ' | sElm | ' ] que não existe na dimensão [ ' | sDim | ' ]';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( dType( sDim , sElm ) @= 'C' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o totalizador [ ' | sElm | ' ] que não pode receber carga';
+      cExisteRegistroRejeitado = 1;
+   EndIf;
+EndIf;
+
+sDim = 'ALL.D.Mes';
+sElm = vMes;
+sCol = 'Mes';
+If( cExisteRegistroRejeitado = 0 );
+   If( sElm @= '' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] está em branco e é obrigatória';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( DimIx( sDim , sElm ) = 0 );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o valor [ ' | sElm | ' ] que não existe na dimensão [ ' | sDim | ' ]';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( dType( sDim , sElm ) @= 'C' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o totalizador [ ' | sElm | ' ] que não pode receber carga';
+      cExisteRegistroRejeitado = 1;
+   EndIf;
+EndIf;
+
+sDim = 'ALL.D.Produto';
+sElm = vCod_Produto;
+sCol = 'Cod_Produto';
+If( cExisteRegistroRejeitado = 0 );
+   If( sElm @= '' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] está em branco e é obrigatória';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( DimIx( sDim , sElm ) = 0 );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o valor [ ' | sElm | ' ] que não existe na dimensão [ ' | sDim | ' ]';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( dType( sDim , sElm ) @= 'C' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o totalizador [ ' | sElm | ' ] que não pode receber carga';
+      cExisteRegistroRejeitado = 1;
+   EndIf;
+EndIf;
+
+sDim = 'ALL.D.Estado';
+sElm = vEstado;
+sCol = 'Estado';
+If( cExisteRegistroRejeitado = 0 );
+   If( sElm @= '' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] está em branco e é obrigatória';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( DimIx( sDim , sElm ) = 0 );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o valor [ ' | sElm | ' ] que não existe na dimensão [ ' | sDim | ' ]';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( dType( sDim , sElm ) @= 'C' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o totalizador [ ' | sElm | ' ] que não pode receber carga';
+      cExisteRegistroRejeitado = 1;
+   EndIf;
+EndIf;
+
+sDim = 'ALL.D.Canal';
+sElm = vCanal;
+sCol = 'Canal';
+If( cExisteRegistroRejeitado = 0 );
+   If( sElm @= '' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] está em branco e é obrigatória';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( DimIx( sDim , sElm ) = 0 );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o valor [ ' | sElm | ' ] que não existe na dimensão [ ' | sDim | ' ]';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( dType( sDim , sElm ) @= 'C' );
+      cMensagemRegistro = 'A coluna [ ' | sCol | ' ] contêm o totalizador [ ' | sElm | ' ] que não pode receber carga';
+      cExisteRegistroRejeitado = 1;
+   EndIf;
+EndIf;
+
+# --- Validação de escopo: Ano/Mes da linha devem bater com o parâmetro ---
+If( cExisteRegistroRejeitado = 0 );
+   If( vAno @<> pAno );
+      cMensagemRegistro = 'A coluna [ Ano ] [ ' | vAno | ' ] é diferente do parâmetro informado [ ' | pAno | ' ]';
+      cExisteRegistroRejeitado = 1;
+   ElseIf( vMes @<> pMes );
+      cMensagemRegistro = 'A coluna [ Mes ] [ ' | vMes | ' ] é diferente do parâmetro informado [ ' | pMes | ' ]';
+      cExisteRegistroRejeitado = 1;
+   EndIf;
+EndIf;
+
+# --- Validação numérica das 9 medidas ---
+sConcatNum = vVolume_Vendas | ';' | vReceita_Bruta | ';' | vDesconto | ';' | vDevolucao | ';' | vICMS | ';' | vIPI | ';' | vPIS | ';' | vCOFINS | ';' | vFrete;
+If( cExisteRegistroRejeitado = 0 );
+  mxChar = long( sConcatNum );
+  ixChar = 1;
+  fail = 0;
+  While ( ixChar <= mxChar & fail = 0 );
+    testASCII = Code( sConcatNum , ixChar );
+    If ( ~ ( testASCII >= 48 & testASCII <= 57 ) & testASCII <> 44 & testASCII <> 46 & testASCII <> 45 & testASCII <> 59 );
+      cExisteRegistroRejeitado = 1;
+      cMensagemRegistro = 'Uma coluna de valor contêm o caractere de texto [ ' | Subst( sConcatNum, ixChar, 1) | ' ]; colunas de valor devem ser numéricas';
+      fail = 1;
+    EndIf;
+    ixChar = ixChar + 1;
+  End;
+EndIf;
+
+# --- DEBUG ou REJEIÇÃO ---
+If( cExisteRegistroRejeitado = 1  %  cUtilizarDebug @= 'S' );
+
+  If( cExisteCabecalhoRejeitado = 0);
+    AsciiOutput( cNomeArquivoRejeitadoCompleto , 'Ano' , 'Mes' , 'Cod_Produto' , 'Estado' , 'Canal' , 'Volume_Vendas' , 'Receita_Bruta' , 'Desconto' , 'Devolucao' , 'ICMS' , 'IPI' , 'PIS' , 'COFINS' , 'Frete' , 'Num. Registro' , 'Mensagem de Erro');
+    cExisteCabecalhoRejeitado = 1;
+    cTipoErro = 2;
+    If( cUtilizarDebug @= 'S'  );
+      cMensagemProcesso = ' Processo concluido com registros salvos no arquivo de Debug, verificar o arquivo:    ' | cNomeArquivoRejeitadoCompleto;
+    EndIf;
+  EndIf;
+
+  AsciiOutput( cNomeArquivoRejeitadoCompleto , vAno , vMes , vCod_Produto , vEstado , vCanal , vVolume_Vendas , vReceita_Bruta , vDesconto , vDevolucao , vICMS , vIPI , vPIS , vCOFINS , vFrete , sContadorRegistro , cMensagemRegistro );
+
+  IF( cExisteRegistroRejeitado = 1 );
+     cExisteRegistroRejeitado = 0;
+     cMensagemRegistro = '';
+     cMensagemProcesso = ' Processo concluido com registros rejeitados, verificar o arquivo:    ' | cNomeArquivoRejeitadoCompleto;
+     ItemSkip;
+  EndIf;
+
+EndIf;
+
+# --- Grava as 9 medidas no cubo ---
+nVolume = StringToNumberEx( vVolume_Vendas, cSeparadorDecimal, cSeparadorMilhar );
+nRecBru = StringToNumberEx( vReceita_Bruta, cSeparadorDecimal, cSeparadorMilhar );
+nDesc   = StringToNumberEx( vDesconto,      cSeparadorDecimal, cSeparadorMilhar );
+nDevol  = StringToNumberEx( vDevolucao,     cSeparadorDecimal, cSeparadorMilhar );
+nICMS   = StringToNumberEx( vICMS,          cSeparadorDecimal, cSeparadorMilhar );
+nIPI    = StringToNumberEx( vIPI,           cSeparadorDecimal, cSeparadorMilhar );
+nPIS    = StringToNumberEx( vPIS,           cSeparadorDecimal, cSeparadorMilhar );
+nCOFINS = StringToNumberEx( vCOFINS,        cSeparadorDecimal, cSeparadorMilhar );
+nFrete  = StringToNumberEx( vFrete,         cSeparadorDecimal, cSeparadorMilhar );
+
+nPisCofins = nPIS + nCOFINS;
+
+CellPutN( nVolume    , cCuboDestino, vAno, vMes, pVersao, vCod_Produto, vEstado, vCanal, 'Volume de Venda' );
+CellPutN( nRecBru    , cCuboDestino, vAno, vMes, pVersao, vCod_Produto, vEstado, vCanal, '$ Receita Bruta' );
+CellPutN( nDesc      , cCuboDestino, vAno, vMes, pVersao, vCod_Produto, vEstado, vCanal, '$ Desconto' );
+CellPutN( nDevol     , cCuboDestino, vAno, vMes, pVersao, vCod_Produto, vEstado, vCanal, '$ Devolução' );
+CellPutN( nICMS      , cCuboDestino, vAno, vMes, pVersao, vCod_Produto, vEstado, vCanal, '$ ICMS' );
+CellPutN( nIPI       , cCuboDestino, vAno, vMes, pVersao, vCod_Produto, vEstado, vCanal, '$ IPI' );
+CellPutN( nPisCofins , cCuboDestino, vAno, vMes, pVersao, vCod_Produto, vEstado, vCanal, '$ PIS/COFINS' );
+CellPutN( nFrete     , cCuboDestino, vAno, vMes, pVersao, vCod_Produto, vEstado, vCanal, '$ Frete' );
+#endregion
+#region Epilog
+CellPutS ( 'YES', cCuboPropriedade, cCuboDestino, 'LOGGING' );
+CubeSaveData ( cCuboDestino );
+
+If( cTipoErro = 0 );
+   cMensagemProcesso = ' Processo concluído com sucesso';
+EndIf;
+
+s01 = TimSt( cHorarioInicio , '\Y-\m-\d \hh\im\ss' );
+s02 = cUsuario ;
+s03 = cMensagemProcesso ;
+s04 = sContadorRegistro ;
+s05 = TimSt( Now - cHorarioInicio, ' \h:\i:\s') ;
+
+CellPutS( s01 , cCuboParametro, cProcesso, 'DataHora Fim' );
+CellPutS( s02 , cCuboParametro, cProcesso, 'Usuário' );
+CellPutS( s03 , cCuboParametro, cProcesso, 'Mensagem de Log' );
+CellPutS( s04 , cCuboParametro, cProcesso, 'Registros Processados' );
+CellPutS( s05 , cCuboParametro, cProcesso, 'Tempo de Execução' );
+
+If( cTipoErro = 2 );
+  ItemReject( cMensagemProcesso );
+EndIf;
+#endregion
