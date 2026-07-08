@@ -1,0 +1,4 @@
+#region Prolog
+# Atualiza a seguranca do modelo (SecurityRefresh)
+SecurityRefresh;
+#endregion
