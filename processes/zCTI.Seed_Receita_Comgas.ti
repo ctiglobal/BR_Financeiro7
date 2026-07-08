@@ -1,0 +1,24 @@
+#region Prolog
+# infra de teste (Pacote 2): seed do total de venda Comgas em STG_Receita_Det
+# para o caso quebra_j1b3n (Comgas VOLUME=200000, Total_Bruto=2000000).
+# Zera a fatia do mes e grava so a linha COMGAS (COD 1900031 alias COMGAS).
+sCubo = 'STG_Receita_Det';
+sView = 'zVcomgas';
+sSub = 'zScomgas';
+IF( ViewExists( sCubo, sView ) = 1 );
+  ViewDestroy( sCubo, sView );
+ENDIF;
+ViewCreate( sCubo, sView, 1 );
+SubsetCreate( 'Ano', sSub, 1 );
+SubsetElementInsert( 'Ano', sSub, pAno, 1 );
+ViewSubsetAssign( sCubo, sView, 'Ano', sSub );
+SubsetCreate( 'Mes', sSub, 1 );
+SubsetElementInsert( 'Mes', sSub, pMes, 1 );
+ViewSubsetAssign( sCubo, sView, 'Mes', sSub );
+ViewZeroOut( sCubo, sView );
+CellPutS( '1900031', sCubo, pAno, pMes, 'R000001', 'COD' );
+CellPutS( 'COMGAS',  sCubo, pAno, pMes, 'R000001', 'RESUMO' );
+CellPutS( 'FIRME',   sCubo, pAno, pMes, 'R000001', 'TC' );
+CellPutN( 200000,  sCubo, pAno, pMes, 'R000001', 'VOLUME' );
+CellPutN( 2000000, sCubo, pAno, pMes, 'R000001', 'Total_Bruto' );
+#endregion

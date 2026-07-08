@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"R_Consolidado_EDGE",
+	"Expression":"{TM1DRILLDOWNMEMBER({[Empresa].[TOTAL_EDGE]}, ALL)}"
+}

@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Medidas_Rateio",
+	"Hierarchies@Code.links":
+	[
+		"Medidas_Rateio.hierarchies/Medidas_Rateio.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Medidas_Rateio')/Hierarchies('Medidas_Rateio')"
+	}
+}

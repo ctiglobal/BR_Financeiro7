@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"R_Segmentos",
+	"Expression":"{TM1DRILLDOWNMEMBER({[Segmento].[Total_Segmento]}, ALL)}"
+}

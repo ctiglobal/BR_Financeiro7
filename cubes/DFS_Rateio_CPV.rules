@@ -1,0 +1,26 @@
+SKIPCHECK;
+
+# ============================================================
+# DFS_Rateio_CPV - regras de rateio do CPV originado
+# RGR-01..04 conforme especificacao/regras_dfs_rateio_cpv.md (Def 7)
+# Insumos (Volume_Venda por cliente; totais na folha tecnica
+# Cliente='Insumo_Rateio') materializados por Calcula_Margem.
+# ============================================================
+
+# RGR-01 | Pct volume | Def 7
+['Pct_Volume'] = N: ['Volume_Venda'] \ DB('DFS_Rateio_CPV', !Versao, 'Total_Cliente', !Ano, !Mes, 'Volume_Venda');
+
+# RGR-02 | Custo molecula rateado | Def 7
+['Custo_Molecula'] = N: DB('DFS_Rateio_CPV', !Versao, 'Insumo_Rateio', !Ano, !Mes, 'Custo_Molecula_Total') * ['Pct_Volume'];
+
+# RGR-03 | Custo transporte rateado | Def 7
+['Custo_Transporte'] = N: DB('DFS_Rateio_CPV', !Versao, 'Insumo_Rateio', !Ano, !Mes, 'Custo_Transporte_Total') * ['Pct_Volume'];
+
+# RGR-04 | Custo GUS rateado | Def 7
+['Custo_GUS'] = N: DB('DFS_Rateio_CPV', !Versao, 'Insumo_Rateio', !Ano, !Mes, 'Custo_GUS_Total') * ['Pct_Volume'];
+
+FEEDERS;
+# FDR-01 | alimenta RGR-01
+['Volume_Venda'] => ['Pct_Volume'];
+# FDR-02 | alimenta RGR-02..04
+['Volume_Venda'] => ['Custo_Molecula'], ['Custo_Transporte'], ['Custo_GUS'];

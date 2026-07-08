@@ -1,0 +1,168 @@
+#region Prolog
+# ============================================================
+# zCTI.Bootstrap_Atributos — infra de construcao (Pacote 1 EDGE)
+# Cria atributos das dimensoes do modelo e grava valores
+# estruturais conforme especificacao/*.yaml. Idempotente.
+# Aliases de Estrutura_Margem ficam VAZIOS [PENDENTE Def 19].
+# Aprovado: proposta B2 do plano do Pacote 1 (03/07/2026).
+# ============================================================
+
+# ---------- Empresa (dim_empresa.yaml) ----------
+sDim = 'Empresa';
+IF( DIMIX( '}ElementAttributes_Empresa', 'Alias' ) = 0 );
+  AttrInsert( sDim, '', 'Alias', 'A' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Empresa', 'CNPJ' ) = 0 );
+  AttrInsert( sDim, '', 'CNPJ', 'S' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Empresa', 'Centro_Padrao' ) = 0 );
+  AttrInsert( sDim, '', 'Centro_Padrao', 'S' );
+ENDIF;
+AttrPutS( 'EDGE Comercializadora', sDim, '3001', 'Alias' );
+AttrPutS( 'TRSP', sDim, '3003', 'Alias' );
+AttrPutS( 'OneBio', sDim, '3007', 'Alias' );
+AttrPutS( 'Eliminacoes Edge x TRSP', sDim, 'ELIM_EDGE', 'Alias' );
+AttrPutS( 'Consolidado EDGE', sDim, 'TOTAL_EDGE', 'Alias' );
+AttrPutS( '3101', sDim, '3001', 'Centro_Padrao' );
+AttrPutS( '3103', sDim, '3003', 'Centro_Padrao' );
+AttrPutS( '3107', sDim, '3007', 'Centro_Padrao' );
+
+# ---------- Centro (dim_centro.yaml) ----------
+sDim = 'Centro';
+IF( DIMIX( '}ElementAttributes_Centro', 'Alias' ) = 0 );
+  AttrInsert( sDim, '', 'Alias', 'A' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Centro', 'Empresa' ) = 0 );
+  AttrInsert( sDim, '', 'Empresa', 'S' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Centro', 'UF' ) = 0 );
+  AttrInsert( sDim, '', 'UF', 'S' );
+ENDIF;
+AttrPutS( '3001', sDim, '3101', 'Empresa' );
+AttrPutS( '3003', sDim, '3103', 'Empresa' );
+AttrPutS( '3007', sDim, '3107', 'Empresa' );
+
+# ---------- Conta (dim_conta.yaml) ----------
+sDim = 'Conta';
+IF( DIMIX( '}ElementAttributes_Conta', 'Alias' ) = 0 );
+  AttrInsert( sDim, '', 'Alias', 'A' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Conta', 'Natureza' ) = 0 );
+  AttrInsert( sDim, '', 'Natureza', 'S' );
+ENDIF;
+
+# ---------- Material (dim_material.yaml) ----------
+sDim = 'Material';
+IF( DIMIX( '}ElementAttributes_Material', 'Alias' ) = 0 );
+  AttrInsert( sDim, '', 'Alias', 'A' );
+ENDIF;
+AttrPutS( 'GNL', sDim, '9804045', 'Alias' );
+AttrPutS( 'GN Proprio', sDim, '9804044', 'Alias' );
+AttrPutS( 'GN Originado', sDim, '9804159', 'Alias' );
+AttrPutS( 'GN Importado', sDim, '9804324', 'Alias' );
+AttrPutS( 'Biometano', sDim, '9800011', 'Alias' );
+AttrPutS( 'Biometano 1000001', sDim, '1000001', 'Alias' );
+AttrPutS( 'Energia Eletrica', sDim, '9801024', 'Alias' );
+AttrPutS( 'PGU', sDim, '9800020', 'Alias' );
+AttrPutS( 'GUS', sDim, '9800022', 'Alias' );
+AttrPutS( 'Servico', sDim, '5530581', 'Alias' );
+
+# ---------- Cliente (dim_cliente.yaml) ----------
+sDim = 'Cliente';
+IF( DIMIX( '}ElementAttributes_Cliente', 'Alias' ) = 0 );
+  AttrInsert( sDim, '', 'Alias', 'A' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Cliente', 'Classificacao' ) = 0 );
+  AttrInsert( sDim, '', 'Classificacao', 'S' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Cliente', 'UF' ) = 0 );
+  AttrInsert( sDim, '', 'UF', 'S' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Cliente', 'TC' ) = 0 );
+  AttrInsert( sDim, '', 'TC', 'S' );
+ENDIF;
+
+# ---------- Segmento (dim_segmento.yaml) ----------
+sDim = 'Segmento';
+IF( DIMIX( '}ElementAttributes_Segmento', 'Alias' ) = 0 );
+  AttrInsert( sDim, '', 'Alias', 'A' );
+ENDIF;
+AttrPutS( 'GN Proprio', sDim, 'GN_Proprio', 'Alias' );
+AttrPutS( 'GN Originado', sDim, 'GN_Originado', 'Alias' );
+AttrPutS( 'Energia Eletrica', sDim, 'Energia_Eletrica', 'Alias' );
+AttrPutS( 'Servico Regas', sDim, 'Servico_Regas', 'Alias' );
+AttrPutS( 'Total Segmento', sDim, 'Total_Segmento', 'Alias' );
+
+# ---------- Estrutura_Margem (dim_estrutura_margem.yaml) ----------
+sDim = 'Estrutura_Margem';
+IF( DIMIX( '}ElementAttributes_Estrutura_Margem', 'Alias' ) = 0 );
+  AttrInsert( sDim, '', 'Alias', 'A' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Estrutura_Margem', 'Bloco' ) = 0 );
+  AttrInsert( sDim, '', 'Bloco', 'S' );
+ENDIF;
+IF( DIMIX( '}ElementAttributes_Estrutura_Margem', 'Carrega_Volume' ) = 0 );
+  AttrInsert( sDim, '', 'Carrega_Volume', 'S' );
+ENDIF;
+
+# Bloco por ramo (folhas herdam o bloco do pai)
+vK = 1;
+WHILE( vK <= ELCOMPN( sDim, 'Total_Receita_Bruta' ) );
+  AttrPutS( 'Receita', sDim, ELCOMP( sDim, 'Total_Receita_Bruta', vK ), 'Bloco' );
+  vK = vK + 1;
+END;
+vK = 1;
+WHILE( vK <= ELCOMPN( sDim, 'Total_Deducoes' ) );
+  AttrPutS( 'Deducao', sDim, ELCOMP( sDim, 'Total_Deducoes', vK ), 'Bloco' );
+  vK = vK + 1;
+END;
+vK = 1;
+WHILE( vK <= ELCOMPN( sDim, 'Total_CPV' ) );
+  AttrPutS( 'CPV', sDim, ELCOMP( sDim, 'Total_CPV', vK ), 'Bloco' );
+  vK = vK + 1;
+END;
+vK = 1;
+WHILE( vK <= ELCOMPN( sDim, 'Total_Outras_Receitas' ) );
+  AttrPutS( 'Outras_Receitas', sDim, ELCOMP( sDim, 'Total_Outras_Receitas', vK ), 'Bloco' );
+  vK = vK + 1;
+END;
+vK = 1;
+WHILE( vK <= ELCOMPN( sDim, 'Total_Penalidades' ) );
+  AttrPutS( 'Penalidades', sDim, ELCOMP( sDim, 'Total_Penalidades', vK ), 'Bloco' );
+  vK = vK + 1;
+END;
+vK = 1;
+WHILE( vK <= ELCOMPN( sDim, 'Total_Outros_Custos' ) );
+  AttrPutS( 'Outros_Custos', sDim, ELCOMP( sDim, 'Total_Outros_Custos', vK ), 'Bloco' );
+  vK = vK + 1;
+END;
+AttrPutS( 'Tecnica', sDim, 'Check_Balanco', 'Bloco' );
+AttrPutS( 'Tecnica', sDim, 'N/A', 'Bloco' );
+
+# Carrega_Volume: default N em todas as folhas, S nas linhas fisicas
+vN = DIMSIZ( sDim );
+vK = 1;
+WHILE( vK <= vN );
+  vEl = DIMNM( sDim, vK );
+  IF( ELLEV( sDim, vEl ) = 0 );
+    AttrPutS( 'N', sDim, vEl, 'Carrega_Volume' );
+  ENDIF;
+  vK = vK + 1;
+END;
+AttrPutS( 'S', sDim, 'Receita_Bruta', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Receita_GUS', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Venda_Biometano', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Receita_Energia_Eletrica', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Custo_Molecula', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Custo_Molecula_GNL', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Custo_Molecula_Biometano', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Custo_Transporte', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Custo_GUS', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Custo_Producao_GN', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Custo_Beneficiamento', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Custo_Importacao', 'Carrega_Volume' );
+AttrPutS( 'S', sDim, 'Energia_Eletrica_CPV', 'Carrega_Volume' );
+#endregion
+#region Epilog
+CellPutS( 'Bootstrap de atributos concluido: Empresa, Centro, Conta, Material, Cliente, Segmento, Estrutura_Margem', 'SYS.150.Controle_Cargas', GetProcessName(), 'Mensagem de Log' );
+#endregion

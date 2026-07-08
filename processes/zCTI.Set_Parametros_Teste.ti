@@ -1,0 +1,7 @@
+#region Prolog
+# infra de teste (Pacote 2): seeda aliquotas PR em SYS_Parametros
+# valores do caso impostos_pr_aliquota conforme brief (Def 9)
+CellPutN( 0.15,   'SYS_Parametros', pAno, pMes, 'Aliquota_ICMS_PR' );
+CellPutN( 0.0165, 'SYS_Parametros', pAno, pMes, 'Aliquota_PIS_PR' );
+CellPutN( 0.076,  'SYS_Parametros', pAno, pMes, 'Aliquota_COFINS_PR' );
+#endregion

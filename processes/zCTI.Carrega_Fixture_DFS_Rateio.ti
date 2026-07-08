@@ -1,0 +1,27 @@
+#region Prolog
+# infra de teste (Pacote 2): carrega fixture de celulas em DFS_Rateio_CPV
+# layout: Versao,Cliente,Ano,Mes,Medidas_Rateio,valor
+# cria o Cliente sob o grupo indicado por pGrupoDefault se nao existir (brief).
+sArq = 'model_upload\' | pArquivo;
+IF( FileExists( sArq ) = 0 );
+  ProcessError;
+ENDIF;
+DatasourceNameForServer = sArq;
+DatasourceNameForClient = sArq;
+#endregion
+#region Metadata
+IF( SUBST( vVersao, 1, 1 ) @= '#' % vVersao @= 'Versao' % TRIM( vVersao ) @= '' );
+  ItemSkip;
+ENDIF;
+# cria cliente da fixture se novo (folha sob Clientes_Livres, exceto Insumo_Rateio que ja existe fora do total)
+IF( DIMIX( 'Cliente', vCliente ) = 0 );
+  DimensionElementInsertDirect( 'Cliente', '', vCliente, 'N' );
+  DimensionElementComponentAddDirect( 'Cliente', 'Clientes_Livres', vCliente, 1 );
+ENDIF;
+#endregion
+#region Data
+IF( SUBST( vVersao, 1, 1 ) @= '#' % vVersao @= 'Versao' % TRIM( vVersao ) @= '' );
+  ItemSkip;
+ENDIF;
+CellPutN( StringToNumber( vValor ), 'DFS_Rateio_CPV', vVersao, vCliente, vAno, vMes, vMedida );
+#endregion

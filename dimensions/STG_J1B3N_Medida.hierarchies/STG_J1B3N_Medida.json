@@ -1,0 +1,24 @@
+{
+	"@type":"Hierarchy",
+	"Name":"STG_J1B3N_Medida",
+	"Elements":
+	[
+		{
+			"Name":"Material",
+			"Type":"String"
+		},
+		{
+			"Name":"Descricao_Material",
+			"Type":"String"
+		},
+		{
+			"Name":"Volume",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Valor_Bruto",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

@@ -1,0 +1,8 @@
+#region Prolog
+# Element security: Operacao escreve so Ajuste em Medidas_Margem [Def 16] - autorizado 06/07
+ElementSecurityPut('WRITE','Medidas_Margem','Valor_Ajuste','GRP_EDGE_Operacao');
+ElementSecurityPut('WRITE','Medidas_Margem','Volume_Ajuste','GRP_EDGE_Operacao');
+ElementSecurityPut('READ','Medidas_Margem','Valor_Carga','GRP_EDGE_Operacao');
+ElementSecurityPut('READ','Medidas_Margem','Volume_Carga','GRP_EDGE_Operacao');
+SecurityRefresh;
+#endregion

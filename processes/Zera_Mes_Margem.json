@@ -1,0 +1,38 @@
+{
+	"@type":"Process",
+	"Name":"Zera_Mes_Margem",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Zera_Mes_Margem.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pAno",
+			"Prompt":"Ano",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pMes",
+			"Prompt":"Mes",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pVersao",
+			"Prompt":"Versao",
+			"Value":"Realizado",
+			"Type":"String"
+		},
+		{
+			"Name":"pPreservaAjuste",
+			"Prompt":"Preserva ajuste (S/N)",
+			"Value":"S",
+			"Type":"String"
+		}
+	],
+	"Variables":[]
+}

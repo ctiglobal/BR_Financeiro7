@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"R_Drill_Razao",
+	"Expression":"{TM1SUBSETALL([STG_Razao_Medida])}"
+}

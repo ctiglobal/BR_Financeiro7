@@ -1,0 +1,20 @@
+{
+	"@type":"Cube",
+	"Name":"STG_Receita_Det",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Ano')"
+		},
+		{
+			"@id":"Dimensions('Mes')"
+		},
+		{
+			"@id":"Dimensions('STG_Registro')"
+		},
+		{
+			"@id":"Dimensions('STG_Receita_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}

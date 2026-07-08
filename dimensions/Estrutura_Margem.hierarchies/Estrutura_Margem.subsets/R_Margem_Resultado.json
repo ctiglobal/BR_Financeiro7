@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"R_Margem_Resultado",
+	"Expression":"{TM1DRILLDOWNMEMBER({[Estrutura_Margem].[Margem_Operacional]}, ALL, RECURSIVE)}"
+}

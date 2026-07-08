@@ -1,0 +1,23 @@
+{
+	"@type":"Cube",
+	"Name":"STG_J1B3N",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Empresa')"
+		},
+		{
+			"@id":"Dimensions('Ano')"
+		},
+		{
+			"@id":"Dimensions('Mes')"
+		},
+		{
+			"@id":"Dimensions('STG_Registro')"
+		},
+		{
+			"@id":"Dimensions('STG_J1B3N_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}

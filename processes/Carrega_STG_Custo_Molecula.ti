@@ -1,0 +1,185 @@
+#region Prolog
+# ============================================================
+# Carrega_STG_Custo_Molecula — id: ti_carrega_stg_custo_molecula [Def 18]
+# Tier B. Carrega o arquivo operacional de custos de compra de
+# molecula (fornecedor-contrato x componentes) do mes para
+# STG_Custo_Molecula. Template CTI par.5.
+# Estrutura real (aba Consolidado Custos): titulo -> header em 2
+# linhas (STATUS/componentes + VOLUMES/TOTAL NET) -> dados.
+# Parser aguarda a linha com VOLUMES na 3a coluna.
+# Epilogo grava totais por componente (MOLECULA/TRANSPORTE/GUS)
+# na mensagem do log, para conferencia com o rateio [spec].
+# ============================================================
+sProc = GetProcessName();
+sCubo = 'STG_Custo_Molecula';
+sLog = 'SYS_Log_Processos';
+sInicio = TIMST( NOW, '\Y-\m-\d \h:\i:\s' );
+nInicio = NOW;
+nLidas = 0;
+nGravadas = 0;
+nRejeitadas = 0;
+nEstrutura = 0;
+nTotArquivo = 0;
+nTotMol = 0;
+nTotTrp = 0;
+nTotGus = 0;
+nDados = 0;
+nLinha = 0;
+sErro = '';
+
+nExec = 1;
+sExec = '';
+WHILE( sExec @= '' & nExec <= 5000 );
+  vSE = NumberToString( nExec );
+  WHILE( LONG( vSE ) < 6 );
+    vSE = '0' | vSE;
+  END;
+  IF( CellGetS( sLog, 'E' | vSE, 'Processo' ) @= '' );
+    sExec = 'E' | vSE;
+  ENDIF;
+  nExec = nExec + 1;
+END;
+
+IF( TRIM( pArquivo ) @= '' );
+  sErro = 'Parametro pArquivo obrigatorio';
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Ano', pAno ) = 0 );
+  sErro = 'Ano [' | pAno | '] inexistente';
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Mes', pMes ) = 0 );
+  sErro = 'Mes [' | pMes | '] inexistente';
+ENDIF;
+sArq = 'model_upload\' | pArquivo;
+IF( sErro @= '' & FileExists( sArq ) = 0 );
+  sErro = 'Arquivo [' | sArq | '] nao encontrado no data directory';
+ENDIF;
+IF( sErro @<> '' );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( 'pArquivo=' | pArquivo | ' pAno=' | pAno | ' pMes=' | pMes, sLog, sExec, 'Parametros' );
+  CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+  CellPutS( sInicio, sLog, sExec, 'Inicio' );
+  CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( sErro, sLog, sExec, 'Mensagem' );
+  # parametro invalido: sai sem tocar dados [spec]
+  ProcessQuit;
+ENDIF;
+
+sView = 'zV_' | sProc;
+sSub = 'zS_' | sProc;
+IF( ViewExists( sCubo, sView ) = 1 );
+  ViewDestroy( sCubo, sView );
+ENDIF;
+ViewCreate( sCubo, sView, 1 );
+SubsetCreate( 'Ano', sSub, 1 );
+SubsetElementInsert( 'Ano', sSub, pAno, 1 );
+ViewSubsetAssign( sCubo, sView, 'Ano', sSub );
+SubsetCreate( 'Mes', sSub, 1 );
+SubsetElementInsert( 'Mes', sSub, pMes, 1 );
+ViewSubsetAssign( sCubo, sView, 'Mes', sSub );
+SubsetCreate( 'STG_Registro', sSub, 1 );
+SubsetElementInsert( 'STG_Registro', sSub, 'Total_Registro', 1 );
+ViewSubsetAssign( sCubo, sView, 'STG_Registro', sSub );
+SubsetCreate( 'STG_Custo_Medida', sSub, 1 );
+vK = 1;
+WHILE( vK <= DIMSIZ( 'STG_Custo_Medida' ) );
+  SubsetElementInsert( 'STG_Custo_Medida', sSub, DIMNM( 'STG_Custo_Medida', vK ), vK );
+  vK = vK + 1;
+END;
+ViewSubsetAssign( sCubo, sView, 'STG_Custo_Medida', sSub );
+
+DatasourceNameForServer = sArq;
+DatasourceNameForClient = sArq;
+#endregion
+#region Data
+nLinha = nLinha + 1;
+
+# --- fase 1: aguardando o header (linha com VOLUMES/TOTAL NET)
+IF( nDados = 0 );
+  IF( TRIM( vVOLUMES ) @= 'VOLUMES' & SCAN( 'TOTAL', UPPER( vTOTALNET ) ) > 0 );
+    nDados = 1;
+    ViewZeroOut( sCubo, sView );
+  ENDIF;
+  ItemSkip;
+ENDIF;
+
+# --- fase 2: dados
+nLidas = nLidas + 1;
+
+# linha sem fornecedor-contrato ou linha de total do arquivo: estrutura, pula
+IF( TRIM( vFornecedor ) @= '' % SCAN( 'TOTAL', UPPER( TRIM( vFornecedor ) ) ) = 1 );
+  nEstrutura = nEstrutura + 1;
+  ItemSkip;
+ENDIF;
+
+IF( nGravadas >= 10000 );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( 'Overflow: arquivo excede 10000 registros por fatia', sLog, sExec, 'Mensagem' );
+  ProcessError;
+ENDIF;
+
+nGravadas = nGravadas + 1;
+vSR = NumberToString( nGravadas );
+WHILE( LONG( vSR ) < 6 );
+  vSR = '0' | vSR;
+END;
+sReg = 'R' | vSR;
+nVol = StringToNumberEx( vVOLUMES, '.', ',' );
+nNet = StringToNumberEx( vTOTALNET, '.', ',' );
+nMol = StringToNumberEx( vMOLECULA, '.', ',' );
+nTrp = StringToNumberEx( vTRANSPORTE, '.', ',' );
+nFtd = StringToNumberEx( vFTD, '.', ',' );
+nFtt = StringToNumberEx( vFTT, '.', ',' );
+nEncu = StringToNumberEx( vENCU, '.', ',' );
+nGus = StringToNumberEx( vGUS, '.', ',' );
+
+CellPutS( TRIM( vSTATUS ), sCubo, pAno, pMes, sReg, 'STATUS' );
+CellPutS( TRIM( vFornecedor ), sCubo, pAno, pMes, sReg, 'Fornecedor_Contrato' );
+CellPutN( nVol, sCubo, pAno, pMes, sReg, 'VOLUMES' );
+CellPutN( nNet, sCubo, pAno, pMes, sReg, 'TOTAL_NET' );
+CellPutN( nMol, sCubo, pAno, pMes, sReg, 'MOLECULA' );
+CellPutN( nTrp, sCubo, pAno, pMes, sReg, 'TRANSPORTE' );
+CellPutN( nFtd, sCubo, pAno, pMes, sReg, 'FTD' );
+CellPutN( nFtt, sCubo, pAno, pMes, sReg, 'FTT' );
+CellPutN( nEncu, sCubo, pAno, pMes, sReg, 'ENCU' );
+CellPutN( nGus, sCubo, pAno, pMes, sReg, 'GUS' );
+nTotArquivo = nTotArquivo + nNet;
+nTotMol = nTotMol + nMol;
+nTotTrp = nTotTrp + nTrp;
+nTotGus = nTotGus + nGus;
+#endregion
+#region Epilog
+IF( nDados = 0 );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+  CellPutS( sInicio, sLog, sExec, 'Inicio' );
+  CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( 'Header (VOLUMES/TOTAL NET) nao encontrado no arquivo', sLog, sExec, 'Mensagem' );
+  ProcessError;
+ENDIF;
+nTotCubo = CellGetN( sCubo, pAno, pMes, 'Total_Registro', 'TOTAL_NET' );
+nDif = ABS( nTotArquivo - nTotCubo );
+sStatus = 'OK';
+IF( nDif > 0.01 );
+  sStatus = 'ERRO';
+ENDIF;
+sMsg = 'Carga STG_Custo_Molecula ' | pAno | '-' | pMes | ': dif=' | NumberToString( nDif ) | '; totais componentes: MOLECULA=' | NumberToString( nTotMol ) | ' TRANSPORTE=' | NumberToString( nTotTrp ) | ' GUS=' | NumberToString( nTotGus ) | ' (conferencia rateio)';
+CellPutS( sProc, sLog, sExec, 'Processo' );
+CellPutS( 'pArquivo=' | pArquivo | ' pAno=' | pAno | ' pMes=' | pMes, sLog, sExec, 'Parametros' );
+CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+CellPutS( sInicio, sLog, sExec, 'Inicio' );
+CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+CellPutS( sStatus, sLog, sExec, 'Status' );
+CellPutS( sMsg, sLog, sExec, 'Mensagem' );
+CellPutN( nLidas, sLog, sExec, 'Linhas_Lidas' );
+CellPutN( nGravadas, sLog, sExec, 'Linhas_Gravadas' );
+CellPutN( nRejeitadas, sLog, sExec, 'Linhas_Rejeitadas' );
+CellPutN( nTotArquivo, sLog, sExec, 'Total_Arquivo' );
+CellPutN( nTotCubo, sLog, sExec, 'Total_Cubo' );
+CellPutN( ( NOW - nInicio ) * 86400, sLog, sExec, 'Duracao_Seg' );
+IF( nDif > 0.01 );
+  ProcessError;
+ENDIF;
+#endregion

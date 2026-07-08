@@ -1,0 +1,38 @@
+SKIPCHECK;
+
+# ============================================================
+# DFS_Margem - regras da margem gerencial
+# RGR-01/02/03/04/06/07 conforme especificacao/regras_dfs_margem.md
+# Aliquotas de SYS_Parametros (Def 9), nunca hardcoded.
+# Classificacao e eliminacoes NAO sao regra (Calcula_Margem /
+# Calcula_Eliminacoes) - DEC-04.
+# ============================================================
+
+# RGR-07 | Volume em consolidados de resultado | Def 5
+# volume nao soma receita+CPV: consolidados de resultado usam o volume da receita bruta
+['Margem_Operacional','Volume'] = C: DB('DFS_Margem', !Versao, !Cliente_Grupo, !Segmento, !Centro, !Empresa, !Ano, !Mes, 'Total_Receita_Bruta', 'Volume');
+['Receita_Liquida','Volume'] = C: DB('DFS_Margem', !Versao, !Cliente_Grupo, !Segmento, !Centro, !Empresa, !Ano, !Mes, 'Total_Receita_Bruta', 'Volume');
+['Total_Deducoes','Volume'] = C: 0;
+
+# RGR-01 | Unitario R$/m3 | Def 5 (N e C; \ evita divisao por zero)
+['Unitario'] = ['Valor'] \ ['Volume'];
+
+# RGR-02 | ICMS PR por aliquota | Def 9
+['Partes_Relacionadas','ICMS','Valor_Carga'] = N: - ['Receita_Bruta','Valor_Carga'] * DB('SYS_Parametros', !Ano, !Mes, 'Aliquota_ICMS_PR');
+
+# RGR-03 | PIS PR por aliquota | Def 9
+['Partes_Relacionadas','PIS','Valor_Carga'] = N: - ( ['Receita_Bruta','Valor_Carga'] + ['Receita_Penalidades','Valor_Carga'] ) * DB('SYS_Parametros', !Ano, !Mes, 'Aliquota_PIS_PR');
+
+# RGR-04 | COFINS PR por aliquota | Def 9
+['Partes_Relacionadas','COFINS','Valor_Carga'] = N: - ( ['Receita_Bruta','Valor_Carga'] + ['Receita_Penalidades','Valor_Carga'] ) * DB('SYS_Parametros', !Ano, !Mes, 'Aliquota_COFINS_PR');
+
+# RGR-06 | Check Balanco | Def 5 (best-effort; total classificado - total razao)
+['Check_Balanco','Valor'] = ['Margem_Operacional','Valor'] + ['Total_Outras_Receitas','Valor'] + ['Total_Penalidades','Valor'] + ['Total_Outros_Custos','Valor'] - DB('SYS_Parametros', !Ano, !Mes, 'Total_Razao_' | !Empresa);
+
+FEEDERS;
+# FDR-01 | alimenta RGR-01 (unitario)
+['Valor_Carga'] => ['Unitario'];
+# FDR-02..04 | alimenta impostos PR por aliquota
+['Partes_Relacionadas','Receita_Bruta','Valor_Carga'] => ['Partes_Relacionadas','ICMS','Valor_Carga'], ['Partes_Relacionadas','PIS','Valor_Carga'], ['Partes_Relacionadas','COFINS','Valor_Carga'];
+# FDR-06 | alimenta Check_Balanco
+['Margem_Operacional','Valor_Carga'] => ['Check_Balanco','Valor'];

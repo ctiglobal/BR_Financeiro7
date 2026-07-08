@@ -1,0 +1,44 @@
+#region Prolog
+# infra de teste (Pacote 2): carrega fixture de celulas em cubo STG com
+# dim Empresa (STG_Razao / STG_J1B3N). Zera a fatia (pCubo,pAno,pMes) antes.
+# Layout: Empresa,Ano,Mes,STG_Registro,<Medida>,valor. String vs numerico
+# decidido pela lista de medidas-string por cubo.
+sArq = 'model_upload\' | pArquivo;
+IF( FileExists( sArq ) = 0 );
+  ProcessError;
+ENDIF;
+# zera fatia do mes (todas empresas/registros/medidas)
+sView = 'zVfx';
+sSub = 'zSfx';
+IF( ViewExists( pCubo, sView ) = 1 );
+  ViewDestroy( pCubo, sView );
+ENDIF;
+ViewCreate( pCubo, sView, 1 );
+SubsetCreate( 'Ano', sSub, 1 );
+SubsetElementInsert( 'Ano', sSub, pAno, 1 );
+ViewSubsetAssign( pCubo, sView, 'Ano', sSub );
+SubsetCreate( 'Mes', sSub, 1 );
+SubsetElementInsert( 'Mes', sSub, pMes, 1 );
+ViewSubsetAssign( pCubo, sView, 'Mes', sSub );
+ViewZeroOut( pCubo, sView );
+DatasourceNameForServer = sArq;
+DatasourceNameForClient = sArq;
+#endregion
+#region Data
+IF( SUBST( vEmpresa, 1, 1 ) @= '#' % vEmpresa @= 'Empresa' % TRIM( vEmpresa ) @= '' );
+  ItemSkip;
+ENDIF;
+# lista de medidas-string por cubo
+sStr = '';
+IF( pCubo @= 'STG_J1B3N' );
+  sStr = '|Material|Descricao_Material|';
+ENDIF;
+IF( pCubo @= 'STG_Razao' );
+  sStr = '|Conta|Empr|Num_Doc|Div|Tp_Doc|Data_Lcto|Data_Doc|Atribuicao|Referencia|MoedI|Cen_Lucro|Razao|Centro_Cst|Texto|Material|Descr_Material|Classificacao|Tipo|Receita_Custo|Classif_Receita|';
+ENDIF;
+IF( SCAN( '|' | vMedida | '|', sStr ) > 0 );
+  CellPutS( vValor, pCubo, vEmpresa, vAno, vMes, vRegistro, vMedida );
+ELSE;
+  CellPutN( StringToNumber( vValor ), pCubo, vEmpresa, vAno, vMes, vRegistro, vMedida );
+ENDIF;
+#endregion

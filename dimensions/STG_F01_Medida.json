@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"STG_F01_Medida",
+	"Hierarchies@Code.links":
+	[
+		"STG_F01_Medida.hierarchies/STG_F01_Medida.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('STG_F01_Medida')/Hierarchies('STG_F01_Medida')"
+	}
+}

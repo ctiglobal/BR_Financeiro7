@@ -1,0 +1,12 @@
+{
+	"@type":"Process",
+	"Name":"zCTI.Seed_MAP_Classificacao",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"zCTI.Seed_MAP_Classificacao.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[]
+}

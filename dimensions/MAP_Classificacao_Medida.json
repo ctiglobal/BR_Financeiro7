@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"MAP_Classificacao_Medida",
+	"Hierarchies@Code.links":
+	[
+		"MAP_Classificacao_Medida.hierarchies/MAP_Classificacao_Medida.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('MAP_Classificacao_Medida')/Hierarchies('MAP_Classificacao_Medida')"
+	}
+}

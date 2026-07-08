@@ -1,0 +1,20 @@
+{
+	"@type":"Cube",
+	"Name":"STG_Custo_Molecula",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Ano')"
+		},
+		{
+			"@id":"Dimensions('Mes')"
+		},
+		{
+			"@id":"Dimensions('STG_Registro')"
+		},
+		{
+			"@id":"Dimensions('STG_Custo_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}

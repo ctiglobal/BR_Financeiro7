@@ -1,0 +1,45 @@
+#region Prolog
+# ============================================================
+# zCTI.Bootstrap_Registros — infra de construcao (Pacote 1 EDGE)
+# Cria pQuantidade folhas <pPrefixo><NNNNNN> (zero-padded, 6 digitos)
+# consolidadas em pTotal, na dimensao pDimensao. Idempotente.
+# Aprovado: proposta B2 do plano do Pacote 1 (03/07/2026).
+# ============================================================
+IF( TRIM( pDimensao ) @= '' );
+  ProcessError;
+ENDIF;
+IF( TRIM( pPrefixo ) @= '' );
+  ProcessError;
+ENDIF;
+IF( pQuantidade <= 0 );
+  ProcessError;
+ENDIF;
+IF( TRIM( pTotal ) @= '' );
+  ProcessError;
+ENDIF;
+IF( DIMIX( '}Dimensions', pDimensao ) = 0 );
+  ProcessError;
+ENDIF;
+
+IF( DIMIX( pDimensao, pTotal ) = 0 );
+  DimensionElementInsertDirect( pDimensao, '', pTotal, 'C' );
+ENDIF;
+
+vI = 1;
+WHILE( vI <= pQuantidade );
+  vS = NumberToString( vI );
+  WHILE( LONG( vS ) < 6 );
+    vS = '0' | vS;
+  END;
+  vNome = pPrefixo | vS;
+  IF( DIMIX( pDimensao, vNome ) = 0 );
+    DimensionElementInsertDirect( pDimensao, '', vNome, 'N' );
+    DimensionElementComponentAddDirect( pDimensao, pTotal, vNome, 1 );
+  ENDIF;
+  vI = vI + 1;
+END;
+#endregion
+#region Epilog
+vMsg = 'Bootstrap ' | pDimensao | ': total=' | pTotal | ' filhos=' | NumberToString( ELCOMPN( pDimensao, pTotal ) ) | ' (solicitado ' | NumberToString( pQuantidade ) | ')';
+CellPutS( vMsg, 'SYS.150.Controle_Cargas', GetProcessName(), 'Mensagem de Log' );
+#endregion

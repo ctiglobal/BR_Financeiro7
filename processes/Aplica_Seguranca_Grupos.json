@@ -1,0 +1,12 @@
+{
+	"@type":"Process",
+	"Name":"Aplica_Seguranca_Grupos",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Aplica_Seguranca_Grupos.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[]
+}

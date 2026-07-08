@@ -1,0 +1,8 @@
+#region Prolog
+# Cria os 4 grupos do seg_matriz [Def 16] - autorizado pelo socio 06/07
+AddGroup('GRP_CTI_Modeler');
+AddGroup('GRP_EDGE_Operacao');
+AddGroup('GRP_ED_Consulta');
+AddGroup('GRP_Agente_IA');
+SecurityRefresh;
+#endregion

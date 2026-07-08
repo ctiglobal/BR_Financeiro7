@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"STG_Registro",
+	"Hierarchies@Code.links":
+	[
+		"STG_Registro.hierarchies/STG_Registro.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('STG_Registro')/Hierarchies('STG_Registro')"
+	}
+}

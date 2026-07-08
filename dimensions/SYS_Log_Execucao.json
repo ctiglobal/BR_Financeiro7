@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"SYS_Log_Execucao",
+	"Hierarchies@Code.links":
+	[
+		"SYS_Log_Execucao.hierarchies/SYS_Log_Execucao.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('SYS_Log_Execucao')/Hierarchies('SYS_Log_Execucao')"
+	}
+}

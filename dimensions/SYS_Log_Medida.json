@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"SYS_Log_Medida",
+	"Hierarchies@Code.links":
+	[
+		"SYS_Log_Medida.hierarchies/SYS_Log_Medida.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('SYS_Log_Medida')/Hierarchies('SYS_Log_Medida')"
+	}
+}

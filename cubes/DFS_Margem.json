@@ -1,0 +1,36 @@
+{
+	"@type":"Cube",
+	"Name":"DFS_Margem",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Versao')"
+		},
+		{
+			"@id":"Dimensions('Cliente_Grupo')"
+		},
+		{
+			"@id":"Dimensions('Segmento')"
+		},
+		{
+			"@id":"Dimensions('Centro')"
+		},
+		{
+			"@id":"Dimensions('Empresa')"
+		},
+		{
+			"@id":"Dimensions('Ano')"
+		},
+		{
+			"@id":"Dimensions('Mes')"
+		},
+		{
+			"@id":"Dimensions('Estrutura_Margem')"
+		},
+		{
+			"@id":"Dimensions('Medidas_Margem')"
+		}
+	],
+	"Rules@Code.link":"DFS_Margem.rules",
+	"Views@Code.links":[]
+}

@@ -1,0 +1,26 @@
+{
+	"@type":"Process",
+	"Name":"zCTI.Zera_Stages_Mes",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"zCTI.Zera_Stages_Mes.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pAno",
+			"Prompt":"Ano",
+			"Value":"2026",
+			"Type":"String"
+		},
+		{
+			"Name":"pMes",
+			"Prompt":"Mes",
+			"Value":"06",
+			"Type":"String"
+		}
+	],
+	"Variables":[]
+}

@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Centro_Lucro",
+	"Hierarchies@Code.links":
+	[
+		"Centro_Lucro.hierarchies/Centro_Lucro.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Centro_Lucro')/Hierarchies('Centro_Lucro')"
+	}
+}

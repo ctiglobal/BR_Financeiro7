@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"MAP_Texto_Linha",
+	"Hierarchies@Code.links":
+	[
+		"MAP_Texto_Linha.hierarchies/MAP_Texto_Linha.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('MAP_Texto_Linha')/Hierarchies('MAP_Texto_Linha')"
+	}
+}

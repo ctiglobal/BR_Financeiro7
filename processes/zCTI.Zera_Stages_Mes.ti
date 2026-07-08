@@ -1,0 +1,13 @@
+#region Prolog
+# infra de teste: zera fatia pAno/pMes de STG_J1B3N e STG_Receita_Det (drivers do passo 4)
+vC='STG_J1B3N';
+sv='zZj'; IF(ViewExists(vC,sv)=1);ViewDestroy(vC,sv);ENDIF; ViewCreate(vC,sv,1);
+IF(SubsetExists('Ano','zZja')=1);SubsetDestroy('Ano','zZja');ENDIF; SubsetCreate('Ano','zZja',1);SubsetElementInsert('Ano','zZja',pAno,1);ViewSubsetAssign(vC,sv,'Ano','zZja');
+IF(SubsetExists('Mes','zZjm')=1);SubsetDestroy('Mes','zZjm');ENDIF; SubsetCreate('Mes','zZjm',1);SubsetElementInsert('Mes','zZjm',pMes,1);ViewSubsetAssign(vC,sv,'Mes','zZjm');
+ViewZeroOut(vC,sv);
+vC='STG_Receita_Det';
+sv='zZr'; IF(ViewExists(vC,sv)=1);ViewDestroy(vC,sv);ENDIF; ViewCreate(vC,sv,1);
+IF(SubsetExists('Ano','zZra')=1);SubsetDestroy('Ano','zZra');ENDIF; SubsetCreate('Ano','zZra',1);SubsetElementInsert('Ano','zZra',pAno,1);ViewSubsetAssign(vC,sv,'Ano','zZra');
+IF(SubsetExists('Mes','zZrm')=1);SubsetDestroy('Mes','zZrm');ENDIF; SubsetCreate('Mes','zZrm',1);SubsetElementInsert('Mes','zZrm',pMes,1);ViewSubsetAssign(vC,sv,'Mes','zZrm');
+ViewZeroOut(vC,sv);
+#endregion

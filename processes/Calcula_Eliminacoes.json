@@ -1,0 +1,32 @@
+{
+	"@type":"Process",
+	"Name":"Calcula_Eliminacoes",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Calcula_Eliminacoes.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pAno",
+			"Prompt":"Ano",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pMes",
+			"Prompt":"Mes (01..12)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pVersao",
+			"Prompt":"Versao",
+			"Value":"Realizado",
+			"Type":"String"
+		}
+	],
+	"Variables":[]
+}

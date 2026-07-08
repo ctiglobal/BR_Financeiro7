@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"STG_Receita_Medida",
+	"Hierarchies@Code.links":
+	[
+		"STG_Receita_Medida.hierarchies/STG_Receita_Medida.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('STG_Receita_Medida')/Hierarchies('STG_Receita_Medida')"
+	}
+}

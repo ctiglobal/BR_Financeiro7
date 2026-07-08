@@ -1,0 +1,40 @@
+#region Prolog
+# Carrega MAP_Classificacao do de-para extraido da aba Margem Edge (Def 6).
+# layout CSV (; ): conta;material;Destino_Estrutura;Destino_Segmento;Ativo
+sArq='model_upload\' | pArquivo;
+IF(FileExists(sArq)=0); ProcessError; ENDIF;
+DatasourceNameForServer=sArq; DatasourceNameForClient=sArq;
+nOk=0; nSkip=0; nNovaConta=0;
+#endregion
+#region Metadata
+# cria conta nova (inclui alfanumericas CPC/DU/PRO) sob Total_Conta
+IF( TRIM(vConta)@<>'' & DIMIX('Conta',vConta)=0 );
+  DimensionElementInsertDirect('Conta','',vConta,'N');
+  DimensionElementComponentAddDirect('Conta','Total_Conta',vConta,1);
+ENDIF;
+#endregion
+#region Data
+IF( TRIM(vConta)@='' ); ItemSkip; ENDIF;
+sMat=vMaterial; IF(TRIM(sMat)@=''); sMat='N/A'; ENDIF;
+# valida destinos contra as dimensoes; invalido -> loga e pula
+IF( DIMIX('Estrutura_Margem',vEstrutura)=0 % DIMIX('Segmento',vSegmento)=0 % DIMIX('Material',sMat)=0 );
+  nSkip=nSkip+1; ItemSkip;
+ENDIF;
+CellPutS( vEstrutura, 'MAP_Classificacao', vConta, sMat, 'Destino_Estrutura' );
+CellPutS( vSegmento,  'MAP_Classificacao', vConta, sMat, 'Destino_Segmento' );
+CellPutN( StringToNumber(vAtivo), 'MAP_Classificacao', vConta, sMat, 'Ativo' );
+nOk=nOk+1;
+#endregion
+#region Epilog
+sLog='SYS_Log_Processos';
+nE=1; sE='';
+WHILE( sE @= '' & nE <= 5000 );
+  vSE=NumberToString(nE); WHILE(LONG(vSE)<6); vSE='0'|vSE; END;
+  IF( CellGetS(sLog,'E'|vSE,'Processo')@='' ); sE='E'|vSE; ENDIF;
+  nE=nE+1;
+END;
+CellPutS('zCTI.Carrega_MAP_Classificacao',sLog,sE,'Processo');
+CellPutS('OK',sLog,sE,'Status');
+CellPutS('MAP_Classificacao carregado do de-para Margem Edge: linhas='|NumberToString(nOk)|' puladas='|NumberToString(nSkip),sLog,sE,'Mensagem');
+CellPutN(nOk,sLog,sE,'Linhas_Gravadas');
+#endregion

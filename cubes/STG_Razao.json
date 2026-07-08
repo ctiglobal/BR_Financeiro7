@@ -1,0 +1,23 @@
+{
+	"@type":"Cube",
+	"Name":"STG_Razao",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Empresa')"
+		},
+		{
+			"@id":"Dimensions('Ano')"
+		},
+		{
+			"@id":"Dimensions('Mes')"
+		},
+		{
+			"@id":"Dimensions('STG_Registro')"
+		},
+		{
+			"@id":"Dimensions('STG_Razao_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}

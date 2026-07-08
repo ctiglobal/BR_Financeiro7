@@ -1,0 +1,24 @@
+{
+	"@type":"Cube",
+	"Name":"DFS_Rateio_CPV",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Versao')"
+		},
+		{
+			"@id":"Dimensions('Cliente')"
+		},
+		{
+			"@id":"Dimensions('Ano')"
+		},
+		{
+			"@id":"Dimensions('Mes')"
+		},
+		{
+			"@id":"Dimensions('Medidas_Rateio')"
+		}
+	],
+	"Rules@Code.link":"DFS_Rateio_CPV.rules",
+	"Views@Code.links":[]
+}

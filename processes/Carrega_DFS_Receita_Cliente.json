@@ -1,0 +1,32 @@
+{
+	"@type":"Process",
+	"Name":"Carrega_DFS_Receita_Cliente",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Carrega_DFS_Receita_Cliente.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pAno",
+			"Prompt":"Ano",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pMes",
+			"Prompt":"Mes",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pVersao",
+			"Prompt":"Versao",
+			"Value":"Realizado",
+			"Type":"String"
+		}
+	],
+	"Variables":[]
+}

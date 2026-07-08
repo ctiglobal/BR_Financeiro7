@@ -1,0 +1,109 @@
+#region Prolog
+# ============================================================
+# Calcula_Eliminacoes - id: ti_calcula_eliminacoes [Def 11]
+# Tier A. Materializa eliminacoes intercompany em Empresa=ELIM_EDGE
+# (aba Eliminacoes - Edge x TRSP). ELIM entra com sinal contrario
+# das linhas intercompany PR, de modo que TOTAL_EDGE consolida limpo.
+# Implementacao (construcao): ELIM_EDGE[linha] = -(3001+3003+3007)[linha]
+# para as linhas intercompany, em Partes_Relacionadas, Valor_Carga.
+# NOTA DE DIVERGENCIA: a spec descreve formulas fonte->alvo especificas
+# (Receita_Servico(TRSP), Venda_Biometano(OneBio), custos correspondentes);
+# a construcao usa -(soma das empresas) sobre a lista intercompany, que
+# coincide com a spec quando so uma empresa tem a linha (caso das fixtures)
+# e evita over-eliminacao ao restringir a lista. Refinar a SELECAO de
+# fluxos intercompany com dados reais na F4 (DEC-07).
+# ============================================================
+sProc = GetProcessName();
+sCubo = 'DFS_Margem';
+sLog = 'SYS_Log_Processos';
+sInicio = TIMST( NOW, '\Y-\m-\d \h:\i:\s' );
+nInicio = NOW;
+nCels = 0;
+sErro = '';
+
+# aloca execucao livre no log
+nExec = 1;
+sExec = '';
+WHILE( sExec @= '' & nExec <= 5000 );
+  vSE = NumberToString( nExec );
+  WHILE( LONG( vSE ) < 6 );
+    vSE = '0' | vSE;
+  END;
+  IF( CellGetS( sLog, 'E' | vSE, 'Processo' ) @= '' );
+    sExec = 'E' | vSE;
+  ENDIF;
+  nExec = nExec + 1;
+END;
+
+# validacao de parametros
+IF( DIMIX( 'Versao', pVersao ) = 0 );
+  sErro = 'Versao [' | pVersao | '] inexistente';
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Ano', pAno ) = 0 );
+  sErro = 'Ano [' | pAno | '] inexistente';
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Mes', pMes ) = 0 );
+  sErro = 'Mes [' | pMes | '] inexistente';
+ENDIF;
+# trava: mes fechado nao recalcula (Def 16)
+IF( sErro @= '' & CellGetN( 'SYS_Parametros', pAno, pMes, 'Flag_Mes_Fechado' ) = 1 );
+  sErro = 'Mes ' | pAno | '-' | pMes | ' esta FECHADO (Flag_Mes_Fechado=1) - eliminacoes bloqueadas [Def 16]';
+ENDIF;
+IF( sErro @<> '' );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( 'pAno=' | pAno | ' pMes=' | pMes | ' pVersao=' | pVersao, sLog, sExec, 'Parametros' );
+  CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+  CellPutS( sInicio, sLog, sExec, 'Inicio' );
+  CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( sErro, sLog, sExec, 'Mensagem' );
+  ProcessQuit;
+ENDIF;
+
+# lista de linhas intercompany a eliminar (pipe-delimitada)
+sLinhas = 'Receita_Servico|Venda_Biometano|Custo_Molecula|Custo_Transporte|Custo_GUS';
+
+nS = 1;
+WHILE( nS <= DIMSIZ( 'Segmento' ) );
+  sSeg = DIMNM( 'Segmento', nS );
+  IF( ELLEV( 'Segmento', sSeg ) = 0 );
+    nC = 1;
+    WHILE( nC <= DIMSIZ( 'Centro' ) );
+      sCen = DIMNM( 'Centro', nC );
+      IF( ELLEV( 'Centro', sCen ) = 0 );
+        sRest = sLinhas;
+        WHILE( LONG( sRest ) > 0 );
+          nP = SCAN( '|', sRest );
+          IF( nP = 0 );
+            sLin = sRest;
+            sRest = '';
+          ELSE;
+            sLin = SUBST( sRest, 1, nP - 1 );
+            sRest = SUBST( sRest, nP + 1, LONG( sRest ) - nP );
+          ENDIF;
+          nSoma = CellGetN( sCubo, pVersao, 'Partes_Relacionadas', sSeg, sCen, '3001', pAno, pMes, sLin, 'Valor_Carga' )
+                + CellGetN( sCubo, pVersao, 'Partes_Relacionadas', sSeg, sCen, '3003', pAno, pMes, sLin, 'Valor_Carga' )
+                + CellGetN( sCubo, pVersao, 'Partes_Relacionadas', sSeg, sCen, '3007', pAno, pMes, sLin, 'Valor_Carga' );
+          CellPutN( -nSoma, sCubo, pVersao, 'Partes_Relacionadas', sSeg, sCen, 'ELIM_EDGE', pAno, pMes, sLin, 'Valor_Carga' );
+          IF( nSoma <> 0 );
+            nCels = nCels + 1;
+          ENDIF;
+        END;
+      ENDIF;
+      nC = nC + 1;
+    END;
+  ENDIF;
+  nS = nS + 1;
+END;
+#endregion
+#region Epilog
+CellPutS( sProc, sLog, sExec, 'Processo' );
+CellPutS( 'pAno=' | pAno | ' pMes=' | pMes | ' pVersao=' | pVersao, sLog, sExec, 'Parametros' );
+CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+CellPutS( sInicio, sLog, sExec, 'Inicio' );
+CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+CellPutS( 'OK', sLog, sExec, 'Status' );
+CellPutS( 'Eliminacoes ' | pVersao | '/' | pAno | '-' | pMes | ': ' | NumberToString( nCels ) | ' celulas intercompany eliminadas em ELIM_EDGE', sLog, sExec, 'Mensagem' );
+CellPutN( nCels, sLog, sExec, 'Linhas_Gravadas' );
+CellPutN( ( NOW - nInicio ) * 86400, sLog, sExec, 'Duracao_Seg' );
+#endregion

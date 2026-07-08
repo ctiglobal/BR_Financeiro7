@@ -1,0 +1,46 @@
+#region Prolog
+# Carrega_DFS_Receita_Cliente [Def 12] - Tier B
+# Copia STG_Receita_Det (por registro/COD) para DFS_Receita_Cliente
+# (Versao x Cliente x Ano x Mes x STG_Receita_Medida). Cubo de consumo,
+# sem margem por cliente (D9). Cliente novo entra por Atualiza_Dim_Cadastros.
+sLog='SYS_Log_Processos';
+nExec=1; sExec='';
+WHILE( sExec @= '' & nExec <= 5000 );
+  vSE=NumberToString(nExec); WHILE(LONG(vSE)<6); vSE='0'|vSE; END;
+  IF( CellGetS(sLog,'E'|vSE,'Processo')@='' ); sExec='E'|vSE; ENDIF;
+  nExec=nExec+1;
+END;
+nCop=0;
+# medidas numericas a copiar (pipe)
+sMeds='VOLUME|Total_Bruto|Molecula|Transporte|EP|PGU_1|PGU_2|FTD|FTT|EC|GUS_M1|VP_M1|ENA_M1';
+nReg=1; nFim=0;
+WHILE( nReg<=10000 & nFim=0 );
+  vSR=NumberToString(nReg); WHILE(LONG(vSR)<6); vSR='0'|vSR; END; sReg='R'|vSR;
+  sCod=CellGetS('STG_Receita_Det',pAno,pMes,sReg,'COD');
+  IF( sCod @= '' );
+    nFim=1;
+  ELSE;
+    IF( DIMIX('Cliente',sCod)>0 );
+      # strings
+      CellPutS(CellGetS('STG_Receita_Det',pAno,pMes,sReg,'TC'),'DFS_Receita_Cliente',pVersao,sCod,pAno,pMes,'TC');
+      CellPutS(CellGetS('STG_Receita_Det',pAno,pMes,sReg,'UF'),'DFS_Receita_Cliente',pVersao,sCod,pAno,pMes,'UF');
+      CellPutS(CellGetS('STG_Receita_Det',pAno,pMes,sReg,'RESUMO'),'DFS_Receita_Cliente',pVersao,sCod,pAno,pMes,'RESUMO');
+      CellPutS(CellGetS('STG_Receita_Det',pAno,pMes,sReg,'STATUS'),'DFS_Receita_Cliente',pVersao,sCod,pAno,pMes,'STATUS');
+      CellPutS(sCod,'DFS_Receita_Cliente',pVersao,sCod,pAno,pMes,'COD');
+      # numericos
+      sRest=sMeds;
+      WHILE( LONG(sRest)>0 );
+        nP=SCAN('|',sRest);
+        IF(nP=0); sMd=sRest; sRest=''; ELSE; sMd=SUBST(sRest,1,nP-1); sRest=SUBST(sRest,nP+1,LONG(sRest)-nP); ENDIF;
+        CellPutN(CellGetN('STG_Receita_Det',pAno,pMes,sReg,sMd),'DFS_Receita_Cliente',pVersao,sCod,pAno,pMes,sMd);
+      END;
+      nCop=nCop+1;
+    ENDIF;
+    nReg=nReg+1;
+  ENDIF;
+END;
+CellPutS('Carrega_DFS_Receita_Cliente',sLog,sExec,'Processo');
+CellPutS('OK',sLog,sExec,'Status');
+CellPutS('Receita por cliente '|pVersao|'/'|pAno|'-'|pMes|': '|NumberToString(nCop)|' clientes copiados',sLog,sExec,'Mensagem');
+CellPutN(nCop,sLog,sExec,'Linhas_Gravadas');
+#endregion

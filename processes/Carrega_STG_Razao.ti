@@ -1,0 +1,216 @@
+#region Prolog
+# ============================================================
+# Carrega_STG_Razao — id: ti_carrega_stg_razao [Def 13, Def 18]
+# Tier A. Carrega o arquivo do razao (FS10N) de uma empresa/mes
+# para STG_Razao, 1:1 com a origem. Template CTI par.5, 4 secoes:
+#   Prologo:  valida parametros; monta view escopada (zero-out
+#             roda no Data, somente apos header validado)
+#   Metadados: nenhuma (cadastros via Atualiza_Dim_Cadastros)
+#   Dados:    linha 1 = header (layout = contrato Def 18, 21 col
+#             verificadas no Excel-modelo aba Razao EDGE);
+#             ViewZeroOut ESCOPADO; registro sequencial; ItemReject logado
+#   Epilogo:  conciliacao +-0.01; Total_Razao_{emp} em SYS_Parametros
+#             (insumo RGR-06 Check_Balanco); log em SYS_Log_Processos
+# ============================================================
+sProc = GetProcessName();
+sCubo = 'STG_Razao';
+sLog = 'SYS_Log_Processos';
+sInicio = TIMST( NOW, '\Y-\m-\d \h:\i:\s' );
+nInicio = NOW;
+nLidas = 0;
+nGravadas = 0;
+nRejeitadas = 0;
+nTotArquivo = 0;
+nHeaderOk = 0;
+nLinha = 0;
+sErro = '';
+
+# --- aloca proxima execucao livre do log
+nExec = 1;
+sExec = '';
+WHILE( sExec @= '' & nExec <= 5000 );
+  vSE = NumberToString( nExec );
+  WHILE( LONG( vSE ) < 6 );
+    vSE = '0' | vSE;
+  END;
+  IF( CellGetS( sLog, 'E' | vSE, 'Processo' ) @= '' );
+    sExec = 'E' | vSE;
+  ENDIF;
+  nExec = nExec + 1;
+END;
+
+# --- validacao de parametros (invalido -> log + ProcessQuit) [spec]
+IF( TRIM( pArquivo ) @= '' );
+  sErro = 'Parametro pArquivo obrigatorio';
+ENDIF;
+IF( sErro @= '' );
+  IF( DIMIX( 'Empresa', pEmpresa ) = 0 );
+    sErro = 'Empresa [' | pEmpresa | '] inexistente';
+  ELSEIF( ELLEV( 'Empresa', pEmpresa ) > 0 % UPPER( pEmpresa ) @= 'ELIM_EDGE' % UPPER( pEmpresa ) @= 'N/A' );
+    sErro = 'Empresa [' | pEmpresa | '] nao e folha de carga valida';
+  ENDIF;
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Ano', pAno ) = 0 );
+  sErro = 'Ano [' | pAno | '] inexistente';
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Mes', pMes ) = 0 );
+  sErro = 'Mes [' | pMes | '] inexistente';
+ENDIF;
+sArq = 'model_upload\' | pArquivo;
+IF( sErro @= '' & FileExists( sArq ) = 0 );
+  sErro = 'Arquivo [' | sArq | '] nao encontrado no data directory';
+ENDIF;
+IF( sErro @<> '' );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( 'pArquivo=' | pArquivo | ' pEmpresa=' | pEmpresa | ' pAno=' | pAno | ' pMes=' | pMes, sLog, sExec, 'Parametros' );
+  CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+  CellPutS( sInicio, sLog, sExec, 'Inicio' );
+  CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( sErro, sLog, sExec, 'Mensagem' );
+  ProcessQuit;
+ENDIF;
+
+# --- view escopada pEmpresa x pAno x pMes (nunca CubeClearData)
+sView = 'zV_' | sProc;
+sSub = 'zS_' | sProc;
+IF( ViewExists( sCubo, sView ) = 1 );
+  ViewDestroy( sCubo, sView );
+ENDIF;
+ViewCreate( sCubo, sView, 1 );
+SubsetCreate( 'Empresa', sSub, 1 );
+SubsetElementInsert( 'Empresa', sSub, pEmpresa, 1 );
+ViewSubsetAssign( sCubo, sView, 'Empresa', sSub );
+SubsetCreate( 'Ano', sSub, 1 );
+SubsetElementInsert( 'Ano', sSub, pAno, 1 );
+ViewSubsetAssign( sCubo, sView, 'Ano', sSub );
+SubsetCreate( 'Mes', sSub, 1 );
+SubsetElementInsert( 'Mes', sSub, pMes, 1 );
+ViewSubsetAssign( sCubo, sView, 'Mes', sSub );
+SubsetCreate( 'STG_Registro', sSub, 1 );
+SubsetElementInsert( 'STG_Registro', sSub, 'Total_Registro', 1 );
+ViewSubsetAssign( sCubo, sView, 'STG_Registro', sSub );
+SubsetCreate( 'STG_Razao_Medida', sSub, 1 );
+vK = 1;
+WHILE( vK <= DIMSIZ( 'STG_Razao_Medida' ) );
+  SubsetElementInsert( 'STG_Razao_Medida', sSub, DIMNM( 'STG_Razao_Medida', vK ), vK );
+  vK = vK + 1;
+END;
+ViewSubsetAssign( sCubo, sView, 'STG_Razao_Medida', sSub );
+
+DatasourceNameForServer = sArq;
+DatasourceNameForClient = sArq;
+#endregion
+#region Data
+# --- Dados: linha 1 = header (valida layout = contrato Def 18)
+nLinha = nLinha + 1;
+IF( nLinha = 1 );
+  IF( TRIM( vConta ) @<> 'Conta' % TRIM( vEmpr ) @<> 'Empr' % SCAN( 'Mont', vMont ) = 0 % TRIM( vMoedI ) @<> 'MoedI' % TRIM( vTexto ) @<> 'Texto' % TRIM( vMaterial ) @<> 'Material' % TRIM( vTipo ) @<> 'Tipo' );
+    CellPutS( sProc, sLog, sExec, 'Processo' );
+    CellPutS( 'pArquivo=' | pArquivo | ' pEmpresa=' | pEmpresa | ' pAno=' | pAno | ' pMes=' | pMes, sLog, sExec, 'Parametros' );
+    CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+    CellPutS( sInicio, sLog, sExec, 'Inicio' );
+    CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+    CellPutS( 'Abortado', sLog, sExec, 'Status' );
+    CellPutS( 'Layout divergente do contrato (21 colunas razao FS10N) - carga abortada, fatia intacta', sLog, sExec, 'Mensagem' );
+    ProcessError;
+  ENDIF;
+  nHeaderOk = 1;
+  ViewZeroOut( sCubo, sView );
+  ItemSkip;
+ENDIF;
+
+nLidas = nLidas + 1;
+
+# linha invalida: sem conta ou sem montante -> ItemReject logado [spec]
+IF( TRIM( vConta ) @= '' % TRIM( vMont ) @= '' );
+  nRejeitadas = nRejeitadas + 1;
+  ItemReject( 'Linha ' | NumberToString( nLinha ) | ': sem conta ou sem montante numerico' );
+ENDIF;
+
+# arquivo x parametro: empresa divergente nao pode contaminar a fatia
+IF( TRIM( vEmpr ) @<> '' & TRIM( vEmpr ) @<> pEmpresa );
+  nRejeitadas = nRejeitadas + 1;
+  ItemReject( 'Linha ' | NumberToString( nLinha ) | ': empresa do arquivo [' | TRIM( vEmpr ) | '] difere de pEmpresa [' | pEmpresa | ']' );
+ENDIF;
+
+# overflow do stage (dim pre-criada ate R010000)
+IF( nGravadas >= 10000 );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( 'Overflow: arquivo excede 10000 registros por fatia', sLog, sExec, 'Mensagem' );
+  ProcessError;
+ENDIF;
+
+nGravadas = nGravadas + 1;
+vSR = NumberToString( nGravadas );
+WHILE( LONG( vSR ) < 6 );
+  vSR = '0' | vSR;
+END;
+sReg = 'R' | vSR;
+nValor = StringToNumberEx( vMont, '.', ',' );
+
+CellPutS( TRIM( vConta ), sCubo, pEmpresa, pAno, pMes, sReg, 'Conta' );
+CellPutS( TRIM( vEmpr ), sCubo, pEmpresa, pAno, pMes, sReg, 'Empr' );
+CellPutS( vNumDoc, sCubo, pEmpresa, pAno, pMes, sReg, 'Num_Doc' );
+CellPutS( vDiv, sCubo, pEmpresa, pAno, pMes, sReg, 'Div' );
+CellPutS( vTpDoc, sCubo, pEmpresa, pAno, pMes, sReg, 'Tp_Doc' );
+CellPutS( vDataLcto, sCubo, pEmpresa, pAno, pMes, sReg, 'Data_Lcto' );
+CellPutS( vDataDoc, sCubo, pEmpresa, pAno, pMes, sReg, 'Data_Doc' );
+CellPutS( vAtribuicao, sCubo, pEmpresa, pAno, pMes, sReg, 'Atribuicao' );
+CellPutS( vReferencia, sCubo, pEmpresa, pAno, pMes, sReg, 'Referencia' );
+CellPutN( nValor, sCubo, pEmpresa, pAno, pMes, sReg, 'Mont_MI' );
+CellPutS( vMoedI, sCubo, pEmpresa, pAno, pMes, sReg, 'MoedI' );
+CellPutS( vCenLucro, sCubo, pEmpresa, pAno, pMes, sReg, 'Cen_Lucro' );
+CellPutS( vRazao, sCubo, pEmpresa, pAno, pMes, sReg, 'Razao' );
+CellPutS( vCentroCst, sCubo, pEmpresa, pAno, pMes, sReg, 'Centro_Cst' );
+CellPutS( vTexto, sCubo, pEmpresa, pAno, pMes, sReg, 'Texto' );
+CellPutS( vMaterial, sCubo, pEmpresa, pAno, pMes, sReg, 'Material' );
+CellPutS( vDescrMaterial, sCubo, pEmpresa, pAno, pMes, sReg, 'Descr_Material' );
+CellPutS( vClassificacao, sCubo, pEmpresa, pAno, pMes, sReg, 'Classificacao' );
+CellPutS( vTipo, sCubo, pEmpresa, pAno, pMes, sReg, 'Tipo' );
+CellPutS( vReceitaCusto, sCubo, pEmpresa, pAno, pMes, sReg, 'Receita_Custo' );
+CellPutS( vClassifReceita, sCubo, pEmpresa, pAno, pMes, sReg, 'Classif_Receita' );
+nTotArquivo = nTotArquivo + nValor;
+#endregion
+#region Epilog
+# --- Epilogo: conciliacao + parametros de controle + log
+IF( nHeaderOk = 0 );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+  CellPutS( sInicio, sLog, sExec, 'Inicio' );
+  CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( 'Arquivo vazio ou sem header', sLog, sExec, 'Mensagem' );
+  ProcessError;
+ENDIF;
+nTotCubo = CellGetN( sCubo, pEmpresa, pAno, pMes, 'Total_Registro', 'Mont_MI' );
+nDif = ABS( nTotArquivo - nTotCubo );
+sStatus = 'OK';
+IF( nDif > 0.01 );
+  sStatus = 'ERRO';
+ENDIF;
+
+# total de controle do razao por empresa -> SYS_Parametros [insumo RGR-06 Check_Balanco]
+CellPutN( nTotArquivo, 'SYS_Parametros', pAno, pMes, 'Total_Razao_' | pEmpresa );
+
+CellPutS( sProc, sLog, sExec, 'Processo' );
+CellPutS( 'pArquivo=' | pArquivo | ' pEmpresa=' | pEmpresa | ' pAno=' | pAno | ' pMes=' | pMes, sLog, sExec, 'Parametros' );
+CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+CellPutS( sInicio, sLog, sExec, 'Inicio' );
+CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+CellPutS( sStatus, sLog, sExec, 'Status' );
+CellPutS( 'Carga STG_Razao ' | pEmpresa | '/' | pAno | '-' | pMes | ': conciliacao dif=' | NumberToString( nDif ), sLog, sExec, 'Mensagem' );
+CellPutN( nLidas, sLog, sExec, 'Linhas_Lidas' );
+CellPutN( nGravadas, sLog, sExec, 'Linhas_Gravadas' );
+CellPutN( nRejeitadas, sLog, sExec, 'Linhas_Rejeitadas' );
+CellPutN( nTotArquivo, sLog, sExec, 'Total_Arquivo' );
+CellPutN( nTotCubo, sLog, sExec, 'Total_Cubo' );
+CellPutN( ( NOW - nInicio ) * 86400, sLog, sExec, 'Duracao_Seg' );
+
+# conciliacao furada = falha declarada, nunca carga parcial silenciosa [spec]
+IF( nDif > 0.01 );
+  ProcessError;
+ENDIF;
+# objetos temporarios (view/subsets flag=1) sao destruidos automaticamente
+#endregion

@@ -1,0 +1,23 @@
+{
+	"@type":"Cube",
+	"Name":"DFS_Receita_Cliente",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Versao')"
+		},
+		{
+			"@id":"Dimensions('Cliente')"
+		},
+		{
+			"@id":"Dimensions('Ano')"
+		},
+		{
+			"@id":"Dimensions('Mes')"
+		},
+		{
+			"@id":"Dimensions('STG_Receita_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}

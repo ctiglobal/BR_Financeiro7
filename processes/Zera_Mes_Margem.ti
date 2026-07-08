@@ -1,0 +1,41 @@
+#region Prolog
+# Zera_Mes_Margem - id: ti_zera_mes_margem [Def 14]
+# Tier B. Zero-out ESCOPADO de mes/versao em DFS_Margem (*_Carga; preserva
+# Ajuste se pPreservaAjuste='S') e DFS_Rateio_CPV. Nunca CubeClearData.
+# Trava: mes fechado (Flag_Mes_Fechado=1) nao pode ser zerado (Def 16).
+sLog='SYS_Log_Processos';
+nExec=1; sExec='';
+WHILE( sExec @= '' & nExec <= 5000 );
+  vSE=NumberToString(nExec); WHILE(LONG(vSE)<6); vSE='0'|vSE; END;
+  IF( CellGetS(sLog,'E'|vSE,'Processo')@='' ); sExec='E'|vSE; ENDIF;
+  nExec=nExec+1;
+END;
+IF( CellGetN('SYS_Parametros',pAno,pMes,'Flag_Mes_Fechado')=1 );
+  CellPutS('Zera_Mes_Margem',sLog,sExec,'Processo');
+  CellPutS('Abortado',sLog,sExec,'Status');
+  CellPutS('Mes '|pAno|'-'|pMes|' FECHADO - zeramento bloqueado [Def 16]',sLog,sExec,'Mensagem');
+  ProcessQuit;
+ENDIF;
+# DFS_Margem: *_Carga (todas empresas incl ELIM), preserva Ajuste
+sV='zVzm'; sS='zSzm';
+IF( ViewExists('DFS_Margem',sV)=1 ); ViewDestroy('DFS_Margem',sV); ENDIF;
+ViewCreate('DFS_Margem',sV,1);
+SubsetCreate('Versao',sS,1); SubsetElementInsert('Versao',sS,pVersao,1); ViewSubsetAssign('DFS_Margem',sV,'Versao',sS);
+SubsetCreate('Ano',sS,1); SubsetElementInsert('Ano',sS,pAno,1); ViewSubsetAssign('DFS_Margem',sV,'Ano',sS);
+SubsetCreate('Mes',sS,1); SubsetElementInsert('Mes',sS,pMes,1); ViewSubsetAssign('DFS_Margem',sV,'Mes',sS);
+SubsetCreate('Medidas_Margem',sS,1); SubsetElementInsert('Medidas_Margem',sS,'Valor_Carga',1); SubsetElementInsert('Medidas_Margem',sS,'Volume_Carga',2);
+IF( pPreservaAjuste @<> 'S' ); SubsetElementInsert('Medidas_Margem',sS,'Valor_Ajuste',3); SubsetElementInsert('Medidas_Margem',sS,'Volume_Ajuste',4); ENDIF;
+ViewSubsetAssign('DFS_Margem',sV,'Medidas_Margem',sS);
+ViewZeroOut('DFS_Margem',sV);
+# DFS_Rateio_CPV: versao/mes
+sV='zVzr'; sS='zSzr';
+IF( ViewExists('DFS_Rateio_CPV',sV)=1 ); ViewDestroy('DFS_Rateio_CPV',sV); ENDIF;
+ViewCreate('DFS_Rateio_CPV',sV,1);
+SubsetCreate('Versao',sS,1); SubsetElementInsert('Versao',sS,pVersao,1); ViewSubsetAssign('DFS_Rateio_CPV',sV,'Versao',sS);
+SubsetCreate('Ano',sS,1); SubsetElementInsert('Ano',sS,pAno,1); ViewSubsetAssign('DFS_Rateio_CPV',sV,'Ano',sS);
+SubsetCreate('Mes',sS,1); SubsetElementInsert('Mes',sS,pMes,1); ViewSubsetAssign('DFS_Rateio_CPV',sV,'Mes',sS);
+ViewZeroOut('DFS_Rateio_CPV',sV);
+CellPutS('Zera_Mes_Margem',sLog,sExec,'Processo');
+CellPutS('OK',sLog,sExec,'Status');
+CellPutS('Zerado '|pVersao|'/'|pAno|'-'|pMes|' (*_Carga; preservaAjuste='|pPreservaAjuste|')',sLog,sExec,'Mensagem');
+#endregion

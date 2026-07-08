@@ -1,0 +1,38 @@
+{
+	"@type":"Process",
+	"Name":"zCTI.Bootstrap_Registros",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"zCTI.Bootstrap_Registros.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pDimensao",
+			"Prompt":"Dimensao alvo",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPrefixo",
+			"Prompt":"Prefixo das folhas (ex. R)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pQuantidade",
+			"Prompt":"Quantidade de folhas",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pTotal",
+			"Prompt":"Nome do consolidado raiz",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[]
+}

@@ -1,0 +1,17 @@
+{
+	"@type":"Cube",
+	"Name":"SYS_Parametros",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Ano')"
+		},
+		{
+			"@id":"Dimensions('Mes')"
+		},
+		{
+			"@id":"Dimensions('SYS_Parametro')"
+		}
+	],
+	"Views@Code.links":[]
+}

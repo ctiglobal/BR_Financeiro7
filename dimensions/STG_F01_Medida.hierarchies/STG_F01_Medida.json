@@ -1,0 +1,32 @@
+{
+	"@type":"Hierarchy",
+	"Name":"STG_F01_Medida",
+	"Elements":
+	[
+		{
+			"Name":"Empr",
+			"Type":"String"
+		},
+		{
+			"Name":"Conta",
+			"Type":"String"
+		},
+		{
+			"Name":"Descricao",
+			"Type":"String"
+		},
+		{
+			"Name":"Valor_Periodo",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Valor_Comparacao",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Desvio",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

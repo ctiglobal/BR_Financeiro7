@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Estrutura_Margem",
+	"Hierarchies@Code.links":
+	[
+		"Estrutura_Margem.hierarchies/Estrutura_Margem.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Estrutura_Margem')/Hierarchies('Estrutura_Margem')"
+	}
+}

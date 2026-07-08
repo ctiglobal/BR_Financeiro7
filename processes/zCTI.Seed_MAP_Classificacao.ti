@@ -1,0 +1,23 @@
+#region Prolog
+# infra (Pacote 2): carga inicial minima de MAP_Classificacao.
+# O de-para real (~63 classificacoes) vem com dados reais na F4 -
+# o Excel-modelo esta anonimizado/RANDBETWEEN (DEC-07). Aqui seedamos
+# as combinacoes que os asserts de integracao exercitam + material->segmento
+# base (Def 4). Material em branco = elemento 'N/A'.
+# (conta 3040500001, material N/A) -> Custo_Molecula / GN_Proprio [real_x_prov_gn]
+CellPutS( 'Custo_Molecula', 'MAP_Classificacao', '3040500001', 'N/A', 'Destino_Estrutura' );
+CellPutS( 'GN_Proprio',     'MAP_Classificacao', '3040500001', 'N/A', 'Destino_Segmento' );
+CellPutN( 1, 'MAP_Classificacao', '3040500001', 'N/A', 'Ativo' );
+# receita de venda GN proprio (conta 3010500001) -> Receita_Bruta / GN_Proprio
+CellPutS( 'Receita_Bruta', 'MAP_Classificacao', '3010500001', 'N/A', 'Destino_Estrutura' );
+CellPutS( 'GN_Proprio',    'MAP_Classificacao', '3010500001', 'N/A', 'Destino_Segmento' );
+CellPutN( 1, 'MAP_Classificacao', '3010500001', 'N/A', 'Ativo' );
+# receita GN originado (conta 3010500000, material 9804159) -> Receita_Bruta / GN_Originado
+CellPutS( 'Receita_Bruta', 'MAP_Classificacao', '3010500000', '9804159', 'Destino_Estrutura' );
+CellPutS( 'GN_Originado',  'MAP_Classificacao', '3010500000', '9804159', 'Destino_Segmento' );
+CellPutN( 1, 'MAP_Classificacao', '3010500000', '9804159', 'Ativo' );
+# servico regas (conta 3010300002) -> Receita_Servico / Servico_Regas
+CellPutS( 'Receita_Servico', 'MAP_Classificacao', '3010300002', 'N/A', 'Destino_Estrutura' );
+CellPutS( 'Servico_Regas',   'MAP_Classificacao', '3010300002', 'N/A', 'Destino_Segmento' );
+CellPutN( 1, 'MAP_Classificacao', '3010300002', 'N/A', 'Ativo' );
+#endregion

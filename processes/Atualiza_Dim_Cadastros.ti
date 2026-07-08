@@ -1,0 +1,227 @@
+#region Prolog
+# ============================================================
+# Atualiza_Dim_Cadastros — id: ti_atualiza_dim_cadastros [Def 6, Def 12]
+# Tier B. Sincronizacao INCREMENTAL das dimensoes Conta, Material
+# e Cliente contra as bases carregadas (STG_Razao, STG_F01,
+# STG_MB51, STG_J1B3N, STG_Receita_Det) na fatia pAno/pMes.
+# Inclui novos (com log), atualiza aliases, NUNCA exclui
+# (aposentadoria em Inativos). Unwind proibido (padroes par.2).
+# Novos elementos nascem fora dos MAPs -> destino N/A ate mapear;
+# cliente novo entra em Clientes_Livres por default + log [spec].
+# Sem datasource: varredura por CellGet no Prolog.
+# ============================================================
+sProc = GetProcessName();
+sLog = 'SYS_Log_Processos';
+sInicio = TIMST( NOW, '\Y-\m-\d \h:\i:\s' );
+nInicio = NOW;
+nContas = 0;
+nMateriais = 0;
+nClientes = 0;
+sErro = '';
+
+nExec = 1;
+sExec = '';
+WHILE( sExec @= '' & nExec <= 5000 );
+  vSE = NumberToString( nExec );
+  WHILE( LONG( vSE ) < 6 );
+    vSE = '0' | vSE;
+  END;
+  IF( CellGetS( sLog, 'E' | vSE, 'Processo' ) @= '' );
+    sExec = 'E' | vSE;
+  ENDIF;
+  nExec = nExec + 1;
+END;
+
+IF( DIMIX( 'Ano', pAno ) = 0 );
+  sErro = 'Ano [' | pAno | '] inexistente';
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Mes', pMes ) = 0 );
+  sErro = 'Mes [' | pMes | '] inexistente';
+ENDIF;
+IF( sErro @<> '' );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( 'pAno=' | pAno | ' pMes=' | pMes, sLog, sExec, 'Parametros' );
+  CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+  CellPutS( sInicio, sLog, sExec, 'Inicio' );
+  CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( sErro, sLog, sExec, 'Mensagem' );
+  # parametro invalido: sai sem tocar dimensoes [spec]
+  ProcessQuit;
+ENDIF;
+
+# --- varre empresas folha de carga (novas empresas por cadastro, Def 17)
+nEmp = 1;
+WHILE( nEmp <= DIMSIZ( 'Empresa' ) );
+  sEmp = DIMNM( 'Empresa', nEmp );
+  IF( ELLEV( 'Empresa', sEmp ) = 0 & UPPER( sEmp ) @<> 'ELIM_EDGE' & sEmp @<> 'N/A' );
+
+    # ----- STG_Razao: Conta + Material (alias via Descr_Material)
+    nReg = 1;
+    nFim = 0;
+    WHILE( nReg <= 10000 & nFim = 0 );
+      vSR = NumberToString( nReg );
+      WHILE( LONG( vSR ) < 6 );
+        vSR = '0' | vSR;
+      END;
+      sReg = 'R' | vSR;
+      sConta = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Conta' );
+      IF( sConta @= '' );
+        nFim = 1;
+      ELSE;
+        IF( DIMIX( 'Conta', sConta ) = 0 );
+          DimensionElementInsertDirect( 'Conta', '', sConta, 'N' );
+          DimensionElementComponentAddDirect( 'Conta', 'Total_Conta', sConta, 1 );
+          nContas = nContas + 1;
+        ENDIF;
+        sMat = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Material' );
+        IF( sMat @<> '' );
+          IF( DIMIX( 'Material', sMat ) = 0 );
+            DimensionElementInsertDirect( 'Material', '', sMat, 'N' );
+            DimensionElementComponentAddDirect( 'Material', 'Total_Material', sMat, 1 );
+            nMateriais = nMateriais + 1;
+          ENDIF;
+          sDescM = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Descr_Material' );
+          IF( sDescM @<> '' );
+            IF( ATTRS( 'Material', sMat, 'Alias' ) @= '' );
+              AttrPutS( sDescM, 'Material', sMat, 'Alias' );
+            ENDIF;
+          ENDIF;
+        ENDIF;
+        nReg = nReg + 1;
+      ENDIF;
+    END;
+
+    # ----- STG_F01: Conta (alias via Descricao)
+    nReg = 1;
+    nFim = 0;
+    WHILE( nReg <= 10000 & nFim = 0 );
+      vSR = NumberToString( nReg );
+      WHILE( LONG( vSR ) < 6 );
+        vSR = '0' | vSR;
+      END;
+      sReg = 'R' | vSR;
+      sConta = CellGetS( 'STG_F01', sEmp, pAno, pMes, sReg, 'Conta' );
+      IF( sConta @= '' );
+        nFim = 1;
+      ELSE;
+        IF( DIMIX( 'Conta', sConta ) = 0 );
+          DimensionElementInsertDirect( 'Conta', '', sConta, 'N' );
+          DimensionElementComponentAddDirect( 'Conta', 'Total_Conta', sConta, 1 );
+          nContas = nContas + 1;
+        ENDIF;
+        sDescC = CellGetS( 'STG_F01', sEmp, pAno, pMes, sReg, 'Descricao' );
+        IF( sDescC @<> '' );
+          IF( ATTRS( 'Conta', sConta, 'Alias' ) @= '' );
+            AttrPutS( sDescC, 'Conta', sConta, 'Alias' );
+          ENDIF;
+        ENDIF;
+        nReg = nReg + 1;
+      ENDIF;
+    END;
+
+    # ----- STG_MB51: Material
+    nReg = 1;
+    nFim = 0;
+    WHILE( nReg <= 10000 & nFim = 0 );
+      vSR = NumberToString( nReg );
+      WHILE( LONG( vSR ) < 6 );
+        vSR = '0' | vSR;
+      END;
+      sReg = 'R' | vSR;
+      sDoc = CellGetS( 'STG_MB51', sEmp, pAno, pMes, sReg, 'Doc_Material' );
+      IF( sDoc @= '' & CellGetN( 'STG_MB51', sEmp, pAno, pMes, sReg, 'Quantidade' ) = 0 );
+        nFim = 1;
+      ELSE;
+        sMat = CellGetS( 'STG_MB51', sEmp, pAno, pMes, sReg, 'Material' );
+        IF( sMat @<> '' );
+          IF( DIMIX( 'Material', sMat ) = 0 );
+            DimensionElementInsertDirect( 'Material', '', sMat, 'N' );
+            DimensionElementComponentAddDirect( 'Material', 'Total_Material', sMat, 1 );
+            nMateriais = nMateriais + 1;
+          ENDIF;
+        ENDIF;
+        nReg = nReg + 1;
+      ENDIF;
+    END;
+
+    # ----- STG_J1B3N: Material (alias via Descricao_Material)
+    nReg = 1;
+    nFim = 0;
+    WHILE( nReg <= 10000 & nFim = 0 );
+      vSR = NumberToString( nReg );
+      WHILE( LONG( vSR ) < 6 );
+        vSR = '0' | vSR;
+      END;
+      sReg = 'R' | vSR;
+      sMat = CellGetS( 'STG_J1B3N', sEmp, pAno, pMes, sReg, 'Material' );
+      IF( sMat @= '' );
+        nFim = 1;
+      ELSE;
+        IF( DIMIX( 'Material', sMat ) = 0 );
+          DimensionElementInsertDirect( 'Material', '', sMat, 'N' );
+          DimensionElementComponentAddDirect( 'Material', 'Total_Material', sMat, 1 );
+          nMateriais = nMateriais + 1;
+        ENDIF;
+        sDescM = CellGetS( 'STG_J1B3N', sEmp, pAno, pMes, sReg, 'Descricao_Material' );
+        IF( sDescM @<> '' );
+          IF( ATTRS( 'Material', sMat, 'Alias' ) @= '' );
+            AttrPutS( sDescM, 'Material', sMat, 'Alias' );
+          ENDIF;
+        ENDIF;
+        nReg = nReg + 1;
+      ENDIF;
+    END;
+
+  ENDIF;
+  nEmp = nEmp + 1;
+END;
+
+# ----- STG_Receita_Det (sem empresa): Cliente novo -> Clientes_Livres + log
+nReg = 1;
+nFim = 0;
+WHILE( nReg <= 10000 & nFim = 0 );
+  vSR = NumberToString( nReg );
+  WHILE( LONG( vSR ) < 6 );
+    vSR = '0' | vSR;
+  END;
+  sReg = 'R' | vSR;
+  sCod = CellGetS( 'STG_Receita_Det', pAno, pMes, sReg, 'COD' );
+  IF( sCod @= '' );
+    nFim = 1;
+  ELSE;
+    IF( DIMIX( 'Cliente', sCod ) = 0 );
+      DimensionElementInsertDirect( 'Cliente', '', sCod, 'N' );
+      DimensionElementComponentAddDirect( 'Cliente', 'Clientes_Livres', sCod, 1 );
+      AttrPutS( 'Clientes Livres', 'Cliente', sCod, 'Classificacao' );
+      nClientes = nClientes + 1;
+    ENDIF;
+    sResumo = CellGetS( 'STG_Receita_Det', pAno, pMes, sReg, 'RESUMO' );
+    IF( sResumo @<> '' );
+      IF( ATTRS( 'Cliente', sCod, 'Alias' ) @= '' );
+        AttrPutS( sResumo, 'Cliente', sCod, 'Alias' );
+      ENDIF;
+    ENDIF;
+    sUF = CellGetS( 'STG_Receita_Det', pAno, pMes, sReg, 'UF' );
+    IF( sUF @<> '' );
+      AttrPutS( sUF, 'Cliente', sCod, 'UF' );
+    ENDIF;
+    sTC = CellGetS( 'STG_Receita_Det', pAno, pMes, sReg, 'TC' );
+    IF( sTC @<> '' );
+      AttrPutS( sTC, 'Cliente', sCod, 'TC' );
+    ENDIF;
+    nReg = nReg + 1;
+  ENDIF;
+END;
+#endregion
+#region Epilog
+sMsg = 'Cadastros ' | pAno | '-' | pMes | ': contas novas=' | NumberToString( nContas ) | '; materiais novos=' | NumberToString( nMateriais ) | '; clientes novos=' | NumberToString( nClientes ) | ' (novos nascem fora dos MAPs -> N/A ate mapear; cliente novo em Clientes_Livres para revisao)';
+CellPutS( sProc, sLog, sExec, 'Processo' );
+CellPutS( 'pAno=' | pAno | ' pMes=' | pMes, sLog, sExec, 'Parametros' );
+CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+CellPutS( sInicio, sLog, sExec, 'Inicio' );
+CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+CellPutS( 'OK', sLog, sExec, 'Status' );
+CellPutS( sMsg, sLog, sExec, 'Mensagem' );
+CellPutN( ( NOW - nInicio ) * 86400, sLog, sExec, 'Duracao_Seg' );
+#endregion

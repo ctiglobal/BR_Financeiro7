@@ -1,0 +1,26 @@
+{
+	"@type":"Process",
+	"Name":"Atualiza_Dim_Cadastros",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Atualiza_Dim_Cadastros.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pAno",
+			"Prompt":"Ano da fatia carregada",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pMes",
+			"Prompt":"Mes da fatia carregada (01..12)",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[]
+}

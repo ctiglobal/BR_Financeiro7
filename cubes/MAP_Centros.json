@@ -1,0 +1,17 @@
+{
+	"@type":"Cube",
+	"Name":"MAP_Centros",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Centro_Custo')"
+		},
+		{
+			"@id":"Dimensions('Centro_Lucro')"
+		},
+		{
+			"@id":"Dimensions('MAP_Centros_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}

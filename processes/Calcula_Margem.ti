@@ -1,0 +1,292 @@
+#region Prolog
+# ============================================================
+# Calcula_Margem - id: ti_calcula_margem [Def 5,6,8,10]
+# Tier A. Motor do fechamento. Materializa DFS_Margem a partir dos stages.
+# PASSOS IMPLEMENTADOS: 1 classificacao, 2 real x provisao, 3 volumes MB51
+# (fator UA->m3=1, decisao socio 06/07), 4 quebra Comgas, 5 insumos do rateio.
+# PASSOS AINDA SIMPLIFICADOS (dependem da receita PR por cliente real p/ wiring
+# e validacao contra valores reais - F2/F4): 6 impostos de livres por diferenca,
+# 7 abertura receita PR x Livres. Documentado; nao fabricar sem base real.
+# ============================================================
+sProc = GetProcessName();
+sCubo = 'DFS_Margem';
+sRat = 'DFS_Rateio_CPV';
+sLog = 'SYS_Log_Processos';
+sInicio = TIMST( NOW, '\Y-\m-\d \h:\i:\s' );
+nInicio = NOW;
+nClass = 0;
+nNaoClass = 0;
+nQuebra = 0;
+nRateio = 0;
+nVol = 0;
+sErro = '';
+
+nExec = 1;
+sExec = '';
+WHILE( sExec @= '' & nExec <= 5000 );
+  vSE = NumberToString( nExec );
+  WHILE( LONG( vSE ) < 6 );
+    vSE = '0' | vSE;
+  END;
+  IF( CellGetS( sLog, 'E' | vSE, 'Processo' ) @= '' );
+    sExec = 'E' | vSE;
+  ENDIF;
+  nExec = nExec + 1;
+END;
+
+IF( DIMIX( 'Versao', pVersao ) = 0 );
+  sErro = 'Versao inexistente';
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Ano', pAno ) = 0 );
+  sErro = 'Ano inexistente';
+ENDIF;
+IF( sErro @= '' & DIMIX( 'Mes', pMes ) = 0 );
+  sErro = 'Mes inexistente';
+ENDIF;
+IF( sErro @= '' & CellGetN( 'SYS_Parametros', pAno, pMes, 'Flag_Mes_Fechado' ) = 1 );
+  sErro = 'Mes ' | pAno | '-' | pMes | ' FECHADO - calculo bloqueado [Def 16]';
+ENDIF;
+IF( sErro @<> '' );
+  CellPutS( sProc, sLog, sExec, 'Processo' );
+  CellPutS( 'pAno=' | pAno | ' pMes=' | pMes | ' pVersao=' | pVersao, sLog, sExec, 'Parametros' );
+  CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+  CellPutS( sInicio, sLog, sExec, 'Inicio' );
+  CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+  CellPutS( 'Abortado', sLog, sExec, 'Status' );
+  CellPutS( sErro, sLog, sExec, 'Mensagem' );
+  ProcessQuit;
+ENDIF;
+
+# --- ViewZeroOut escopado DFS_Margem (*_Carga, empresas folha; NUNCA ELIM_EDGE/Ajuste)
+sV = 'zVcm'; sS = 'zScm';
+IF( ViewExists( sCubo, sV ) = 1 ); ViewDestroy( sCubo, sV ); ENDIF;
+ViewCreate( sCubo, sV, 1 );
+SubsetCreate( 'Versao', sS, 1 ); SubsetElementInsert( 'Versao', sS, pVersao, 1 ); ViewSubsetAssign( sCubo, sV, 'Versao', sS );
+SubsetCreate( 'Empresa', sS, 1 ); SubsetElementInsert( 'Empresa', sS, '3001', 1 ); SubsetElementInsert( 'Empresa', sS, '3003', 2 ); SubsetElementInsert( 'Empresa', sS, '3007', 3 ); ViewSubsetAssign( sCubo, sV, 'Empresa', sS );
+SubsetCreate( 'Ano', sS, 1 ); SubsetElementInsert( 'Ano', sS, pAno, 1 ); ViewSubsetAssign( sCubo, sV, 'Ano', sS );
+SubsetCreate( 'Mes', sS, 1 ); SubsetElementInsert( 'Mes', sS, pMes, 1 ); ViewSubsetAssign( sCubo, sV, 'Mes', sS );
+SubsetCreate( 'Medidas_Margem', sS, 1 ); SubsetElementInsert( 'Medidas_Margem', sS, 'Valor_Carga', 1 ); SubsetElementInsert( 'Medidas_Margem', sS, 'Volume_Carga', 2 ); ViewSubsetAssign( sCubo, sV, 'Medidas_Margem', sS );
+ViewZeroOut( sCubo, sV );
+
+# --- ViewZeroOut escopado DFS_Rateio_CPV (versao/mes)
+sV = 'zVra'; sS = 'zSra';
+IF( ViewExists( sRat, sV ) = 1 ); ViewDestroy( sRat, sV ); ENDIF;
+ViewCreate( sRat, sV, 1 );
+SubsetCreate( 'Versao', sS, 1 ); SubsetElementInsert( 'Versao', sS, pVersao, 1 ); ViewSubsetAssign( sRat, sV, 'Versao', sS );
+SubsetCreate( 'Ano', sS, 1 ); SubsetElementInsert( 'Ano', sS, pAno, 1 ); ViewSubsetAssign( sRat, sV, 'Ano', sS );
+SubsetCreate( 'Mes', sS, 1 ); SubsetElementInsert( 'Mes', sS, pMes, 1 ); ViewSubsetAssign( sRat, sV, 'Mes', sS );
+ViewZeroOut( sRat, sV );
+
+# ================= PASSO 1 + 2: classificacao e real x provisao =================
+nEmp = 1;
+WHILE( nEmp <= DIMSIZ( 'Empresa' ) );
+  sEmp = DIMNM( 'Empresa', nEmp );
+  IF( ELLEV( 'Empresa', sEmp ) = 0 & sEmp @<> 'ELIM_EDGE' & sEmp @<> 'N/A' );
+    nReg = 1; nFim = 0;
+    WHILE( nReg <= 10000 & nFim = 0 );
+      vSR = NumberToString( nReg );
+      WHILE( LONG( vSR ) < 6 ); vSR = '0' | vSR; END;
+      sReg = 'R' | vSR;
+      sConta = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Conta' );
+      IF( sConta @= '' );
+        nFim = 1;
+      ELSE;
+        nMont = CellGetN( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Mont_MI' );
+        sMat = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Material' );
+        sTipo = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Tipo' );
+        sTexto = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Texto' );
+        sCenC = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Centro_Cst' );
+        sCenL = CellGetS( 'STG_Razao', sEmp, pAno, pMes, sReg, 'Cen_Lucro' );
+        sMatK = sMat;
+        IF( TRIM( sMatK ) @= '' ); sMatK = 'N/A'; ENDIF;
+        IF( DIMIX( 'Material', sMatK ) = 0 ); sMatK = 'N/A'; ENDIF;
+        sEst = ''; sSeg = '';
+        IF( DIMIX( 'Conta', sConta ) > 0 );
+          IF( CellGetS( 'MAP_Classificacao', sConta, sMatK, 'Destino_Estrutura' ) @<> '' );
+            sEst = CellGetS( 'MAP_Classificacao', sConta, sMatK, 'Destino_Estrutura' );
+            sSeg = CellGetS( 'MAP_Classificacao', sConta, sMatK, 'Destino_Segmento' );
+          ENDIF;
+        ENDIF;
+        IF( sEst @= '' );
+          nL = 1;
+          WHILE( nL <= DIMSIZ( 'MAP_Texto_Linha' ) & sEst @= '' );
+            sLn = DIMNM( 'MAP_Texto_Linha', nL );
+            IF( ELLEV( 'MAP_Texto_Linha', sLn ) = 0 );
+              sPref = CellGetS( 'MAP_Texto', sLn, 'Prefixo_Texto' );
+              IF( sPref @<> '' & SCAN( sPref, sTexto ) = 1 & CellGetN( 'MAP_Texto', sLn, 'Ativo' ) = 1 );
+                sEst = CellGetS( 'MAP_Texto', sLn, 'Destino_Estrutura' );
+                sSeg = CellGetS( 'MAP_Texto', sLn, 'Destino_Segmento' );
+              ENDIF;
+            ENDIF;
+            nL = nL + 1;
+          END;
+        ENDIF;
+        IF( sEst @= '' );
+          sEst = 'N/A'; sSeg = 'N/A';
+          nNaoClass = nNaoClass + 1;
+          CellPutS( 'Nao classificado: conta=' | sConta | ' material=' | sMatK | ' texto=' | SUBST(sTexto,1,30), sLog, sExec, 'Mensagem' );
+        ENDIF;
+        IF( TRIM( sSeg ) @= '' ); sSeg = 'N/A'; ENDIF;
+        IF( DIMIX( 'Segmento', sSeg ) = 0 ); sSeg = 'N/A'; ENDIF;
+        sBloco = ATTRS( 'Estrutura_Margem', sEst, 'Bloco' );
+        nProv = 0;
+        IF( SCAN( 'Provisao', sTipo ) > 0 % SCAN( 'Reversao', sTipo ) > 0 % SCAN( 'Reprovisao', sTipo ) > 0 ); nProv = 1; ENDIF;
+        IF( nProv = 0 & SCAN( 'Realizado', sTipo ) > 0 & sBloco @= 'CPV' ); nProv = 1; ENDIF;
+        IF( nProv = 1 );
+          IF( sBloco @= 'CPV' ); sEst = 'Dif_Real_x_Prov_CPV'; ENDIF;
+          IF( sBloco @= 'Receita' ); sEst = 'Dif_Real_x_Prov_Receita'; ENDIF;
+          IF( sBloco @= 'Deducao' ); sEst = 'Dif_Real_x_Prov_Deducao'; ENDIF;
+        ENDIF;
+        sCentro = '';
+        IF( TRIM( sCenC ) @<> '' );
+          IF( DIMIX( 'Centro_Custo', sCenC ) > 0 ); sCentro = CellGetS( 'MAP_Centros', sCenC, 'N/A', 'Centro_Destino' ); ENDIF;
+        ENDIF;
+        IF( sCentro @= '' & TRIM( sCenL ) @<> '' );
+          IF( DIMIX( 'Centro_Lucro', sCenL ) > 0 ); sCentro = CellGetS( 'MAP_Centros', 'N/A', sCenL, 'Centro_Destino' ); ENDIF;
+        ENDIF;
+        IF( sCentro @= '' );
+          sCentro = ATTRS( 'Empresa', sEmp, 'Centro_Padrao' );
+        ENDIF;
+        IF( TRIM( sCentro ) @= '' ); sCentro = 'N/A'; ENDIF;
+        IF( DIMIX( 'Centro', sCentro ) = 0 ); sCentro = 'Nao_Mapeados'; ENDIF;
+        sGrupo = 'N/A';
+        nAtual = CellGetN( sCubo, pVersao, sGrupo, sSeg, sCentro, sEmp, pAno, pMes, sEst, 'Valor_Carga' );
+        CellPutN( nAtual + nMont, sCubo, pVersao, sGrupo, sSeg, sCentro, sEmp, pAno, pMes, sEst, 'Valor_Carga' );
+        nClass = nClass + 1;
+        nReg = nReg + 1;
+      ENDIF;
+    END;
+  ENDIF;
+  nEmp = nEmp + 1;
+END;
+
+# ================= PASSO 3: volumes fisicos MB51 (fator UA->m3 = 1, decisao socio 06/07) =================
+# material -> segmento (Def 4); Quantidade -> Volume_Carga na Receita_Bruta do segmento,
+# Cliente_Grupo=N/A (nao colide com a quebra Comgas do passo 4, que posta em Partes_Relacionadas).
+nEmp = 1;
+WHILE( nEmp <= DIMSIZ( 'Empresa' ) );
+  sEmp = DIMNM( 'Empresa', nEmp );
+  IF( ELLEV( 'Empresa', sEmp ) = 0 & sEmp @<> 'ELIM_EDGE' & sEmp @<> 'N/A' );
+    sCenPad = ATTRS( 'Empresa', sEmp, 'Centro_Padrao' );
+    IF( DIMIX( 'Centro', sCenPad ) = 0 ); sCenPad = 'N/A'; ENDIF;
+    nReg = 1; nFim = 0;
+    WHILE( nReg <= 10000 & nFim = 0 );
+      vSR = NumberToString( nReg );
+      WHILE( LONG( vSR ) < 6 ); vSR = '0' | vSR; END;
+      sReg = 'R' | vSR;
+      sMatM = CellGetS( 'STG_MB51', sEmp, pAno, pMes, sReg, 'Material' );
+      nQt = CellGetN( 'STG_MB51', sEmp, pAno, pMes, sReg, 'Quantidade' );
+      IF( sMatM @= '' & nQt = 0 );
+        nFim = 1;
+      ELSE;
+        sSegM = 'N/A';
+        IF( sMatM @= '9804045' ); sSegM = 'GNL'; ENDIF;
+        IF( sMatM @= '9804044' ); sSegM = 'GN_Proprio'; ENDIF;
+        IF( sMatM @= '9804159' % sMatM @= '9804324' ); sSegM = 'GN_Originado'; ENDIF;
+        IF( sMatM @= '9800011' % sMatM @= '1000001' ); sSegM = 'Biometano'; ENDIF;
+        IF( sMatM @= '9801024' ); sSegM = 'Energia_Eletrica'; ENDIF;
+        IF( nQt <> 0 );
+          nAtV = CellGetN( sCubo, pVersao, 'N/A', sSegM, sCenPad, sEmp, pAno, pMes, 'Receita_Bruta', 'Volume_Carga' );
+          CellPutN( nAtV + nQt, sCubo, pVersao, 'N/A', sSegM, sCenPad, sEmp, pAno, pMes, 'Receita_Bruta', 'Volume_Carga' );
+          nVol = nVol + 1;
+        ENDIF;
+        nReg = nReg + 1;
+      ENDIF;
+    END;
+  ENDIF;
+  nEmp = nEmp + 1;
+END;
+
+# ================= PASSO 4: quebra Comgas GN proprio x originado (Def 8) =================
+nVolProp = 0; nVolOrig = 0;
+nReg = 1; nFim = 0;
+WHILE( nReg <= 10000 & nFim = 0 );
+  vSR = NumberToString( nReg );
+  WHILE( LONG( vSR ) < 6 ); vSR = '0' | vSR; END;
+  sReg = 'R' | vSR;
+  sMatJ = CellGetS( 'STG_J1B3N', '3001', pAno, pMes, sReg, 'Material' );
+  IF( sMatJ @= '' );
+    nFim = 1;
+  ELSE;
+    nVj = CellGetN( 'STG_J1B3N', '3001', pAno, pMes, sReg, 'Volume' );
+    IF( sMatJ @= '9804044' ); nVolProp = nVolProp + nVj; ENDIF;
+    IF( sMatJ @= '9804159' ); nVolOrig = nVolOrig + nVj; ENDIF;
+    nReg = nReg + 1;
+  ENDIF;
+END;
+nComgasVol = 0; nComgasVal = 0;
+nReg = 1; nFim = 0;
+WHILE( nReg <= 10000 & nFim = 0 );
+  vSR = NumberToString( nReg );
+  WHILE( LONG( vSR ) < 6 ); vSR = '0' | vSR; END;
+  sReg = 'R' | vSR;
+  sCod = CellGetS( 'STG_Receita_Det', pAno, pMes, sReg, 'COD' );
+  IF( sCod @= '' );
+    nFim = 1;
+  ELSE;
+    IF( CellGetS( 'STG_Receita_Det', pAno, pMes, sReg, 'RESUMO' ) @= 'COMGAS' );
+      nComgasVol = nComgasVol + CellGetN( 'STG_Receita_Det', pAno, pMes, sReg, 'VOLUME' );
+      nComgasVal = nComgasVal + CellGetN( 'STG_Receita_Det', pAno, pMes, sReg, 'Total_Bruto' );
+    ENDIF;
+    nReg = nReg + 1;
+  ENDIF;
+END;
+IF( nComgasVol > 0 & ( nVolProp + nVolOrig ) > 0 );
+  nTaxa = nComgasVal / nComgasVol;
+  CellPutN( nVolProp, sCubo, pVersao, 'Partes_Relacionadas', 'GN_Proprio', '3101', '3001', pAno, pMes, 'Receita_Bruta', 'Volume_Carga' );
+  CellPutN( nTaxa * nVolProp, sCubo, pVersao, 'Partes_Relacionadas', 'GN_Proprio', '3101', '3001', pAno, pMes, 'Receita_Bruta', 'Valor_Carga' );
+  CellPutN( nVolOrig, sCubo, pVersao, 'Partes_Relacionadas', 'GN_Originado', '3101', '3001', pAno, pMes, 'Receita_Bruta', 'Volume_Carga' );
+  CellPutN( nTaxa * nVolOrig, sCubo, pVersao, 'Partes_Relacionadas', 'GN_Originado', '3101', '3001', pAno, pMes, 'Receita_Bruta', 'Valor_Carga' );
+  nQuebra = 1;
+ENDIF;
+
+# ================= PASSO 5: materializa insumos do rateio (Def 7) =================
+nReg = 1; nFim = 0;
+WHILE( nReg <= 10000 & nFim = 0 );
+  vSR = NumberToString( nReg );
+  WHILE( LONG( vSR ) < 6 ); vSR = '0' | vSR; END;
+  sReg = 'R' | vSR;
+  sCod = CellGetS( 'STG_Receita_Det', pAno, pMes, sReg, 'COD' );
+  IF( sCod @= '' );
+    nFim = 1;
+  ELSE;
+    IF( DIMIX( 'Cliente', sCod ) > 0 );
+      CellPutN( CellGetN( 'STG_Receita_Det', pAno, pMes, sReg, 'VOLUME' ), sRat, pVersao, sCod, pAno, pMes, 'Volume_Venda' );
+      nRateio = nRateio + 1;
+    ENDIF;
+    nReg = nReg + 1;
+  ENDIF;
+END;
+nTM = 0; nTT = 0; nTG = 0;
+nReg = 1; nFim = 0;
+WHILE( nReg <= 10000 & nFim = 0 );
+  vSR = NumberToString( nReg );
+  WHILE( LONG( vSR ) < 6 ); vSR = '0' | vSR; END;
+  sReg = 'R' | vSR;
+  sForn = CellGetS( 'STG_Custo_Molecula', pAno, pMes, sReg, 'Fornecedor_Contrato' );
+  IF( sForn @= '' );
+    nFim = 1;
+  ELSE;
+    nTM = nTM + CellGetN( 'STG_Custo_Molecula', pAno, pMes, sReg, 'MOLECULA' );
+    nTT = nTT + CellGetN( 'STG_Custo_Molecula', pAno, pMes, sReg, 'TRANSPORTE' );
+    nTG = nTG + CellGetN( 'STG_Custo_Molecula', pAno, pMes, sReg, 'GUS' );
+    nReg = nReg + 1;
+  ENDIF;
+END;
+IF( nTM <> 0 ); CellPutN( -nTM, sRat, pVersao, 'Insumo_Rateio', pAno, pMes, 'Custo_Molecula_Total' ); ENDIF;
+IF( nTT <> 0 ); CellPutN( -nTT, sRat, pVersao, 'Insumo_Rateio', pAno, pMes, 'Custo_Transporte_Total' ); ENDIF;
+IF( nTG <> 0 ); CellPutN( -nTG, sRat, pVersao, 'Insumo_Rateio', pAno, pMes, 'Custo_GUS_Total' ); ENDIF;
+#endregion
+#region Epilog
+CellPutS( sProc, sLog, sExec, 'Processo' );
+CellPutS( 'pAno=' | pAno | ' pMes=' | pMes | ' pVersao=' | pVersao, sLog, sExec, 'Parametros' );
+CellPutS( TM1User(), sLog, sExec, 'Usuario' );
+CellPutS( sInicio, sLog, sExec, 'Inicio' );
+CellPutS( TIMST( NOW, '\Y-\m-\d \h:\i:\s' ), sLog, sExec, 'Fim' );
+CellPutS( 'OK', sLog, sExec, 'Status' );
+CellPutS( 'Calcula_Margem ' | pVersao | '/' | pAno | '-' | pMes | ': classif=' | NumberToString( nClass ) | ' nao_classif=' | NumberToString( nNaoClass ) | ' volumes_mb51=' | NumberToString( nVol ) | ' quebra=' | NumberToString( nQuebra ) | ' rateio=' | NumberToString( nRateio ) | ' | passos 6/7 (impostos livres, receita PR x Livres) pendentes de base real', sLog, sExec, 'Mensagem' );
+CellPutN( nClass, sLog, sExec, 'Linhas_Lidas' );
+CellPutN( nClass, sLog, sExec, 'Linhas_Gravadas' );
+CellPutN( nNaoClass, sLog, sExec, 'Linhas_Rejeitadas' );
+CellPutN( ( NOW - nInicio ) * 86400, sLog, sExec, 'Duracao_Seg' );
+#endregion

@@ -1,0 +1,55 @@
+#region Prolog
+# Atualiza_Dim_Centros - id: ti_atualiza_dim_centros [Def 15] - Tier B
+# Le MAP_Centros e mantem CC->Centro e CL->Centro (na propria dimensao, via
+# consolidado com codigo do centro). CC/CL sem mapa -> ramo Nao_Mapeados + log.
+# Incremental; unwind proibido. Reexecucao realoca apos correcao do mapa.
+# NOTA: MAP_Centros ainda sem carga (mapa editavel populado na operacao);
+# neste estado o processo e no-op consistente (loga 0 mapeados / faltantes).
+sLog='SYS_Log_Processos';
+nExec=1; sExec='';
+WHILE( sExec @= '' & nExec <= 5000 );
+  vSE=NumberToString(nExec); WHILE(LONG(vSE)<6); vSE='0'|vSE; END;
+  IF( CellGetS(sLog,'E'|vSE,'Processo')@='' ); sExec='E'|vSE; ENDIF;
+  nExec=nExec+1;
+END;
+nMap=0; nFalta=0;
+# Centro_Custo leaves
+nK=1;
+WHILE( nK<=DIMSIZ('Centro_Custo') );
+  sCC=DIMNM('Centro_Custo',nK);
+  IF( ELLEV('Centro_Custo',sCC)=0 & sCC @<> 'N/A' );
+    sDest=CellGetS('MAP_Centros',sCC,'N/A','Centro_Destino');
+    IF( sDest @<> '' & DIMIX('Centro',sDest)>0 & CellGetN('MAP_Centros',sCC,'N/A','Ativo')=1 );
+      IF( DIMIX('Centro_Custo',sDest)=0 ); DimensionElementInsertDirect('Centro_Custo','',sDest,'C'); ENDIF;
+      DimensionElementComponentAddDirect('Centro_Custo',sDest,sCC,1);
+      nMap=nMap+1;
+    ELSE;
+      DimensionElementComponentAddDirect('Centro_Custo','Nao_Mapeados',sCC,1);
+      nFalta=nFalta+1;
+    ENDIF;
+  ENDIF;
+  nK=nK+1;
+END;
+# Centro_Lucro leaves
+nK=1;
+WHILE( nK<=DIMSIZ('Centro_Lucro') );
+  sCL=DIMNM('Centro_Lucro',nK);
+  IF( ELLEV('Centro_Lucro',sCL)=0 & sCL @<> 'N/A' );
+    sDest=CellGetS('MAP_Centros','N/A',sCL,'Centro_Destino');
+    IF( sDest @<> '' & DIMIX('Centro',sDest)>0 & CellGetN('MAP_Centros','N/A',sCL,'Ativo')=1 );
+      IF( DIMIX('Centro_Lucro',sDest)=0 ); DimensionElementInsertDirect('Centro_Lucro','',sDest,'C'); ENDIF;
+      DimensionElementComponentAddDirect('Centro_Lucro',sDest,sCL,1);
+      nMap=nMap+1;
+    ELSE;
+      DimensionElementComponentAddDirect('Centro_Lucro','Nao_Mapeados',sCL,1);
+      nFalta=nFalta+1;
+    ENDIF;
+  ENDIF;
+  nK=nK+1;
+END;
+CellPutS('Atualiza_Dim_Centros',sLog,sExec,'Processo');
+CellPutS('OK',sLog,sExec,'Status');
+CellPutS('Centros: mapeados='|NumberToString(nMap)|' faltantes(Nao_Mapeados)='|NumberToString(nFalta)|' [Def 15]',sLog,sExec,'Mensagem');
+CellPutN(nMap,sLog,sExec,'Linhas_Gravadas');
+CellPutN(nFalta,sLog,sExec,'Linhas_Rejeitadas');
+#endregion

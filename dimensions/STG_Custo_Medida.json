@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"STG_Custo_Medida",
+	"Hierarchies@Code.links":
+	[
+		"STG_Custo_Medida.hierarchies/STG_Custo_Medida.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('STG_Custo_Medida')/Hierarchies('STG_Custo_Medida')"
+	}
+}

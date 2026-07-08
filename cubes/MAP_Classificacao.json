@@ -1,0 +1,17 @@
+{
+	"@type":"Cube",
+	"Name":"MAP_Classificacao",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Conta')"
+		},
+		{
+			"@id":"Dimensions('Material')"
+		},
+		{
+			"@id":"Dimensions('MAP_Classificacao_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}

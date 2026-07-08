@@ -1,0 +1,12 @@
+{
+	"@type":"Process",
+	"Name":"zCTI.Bootstrap_Atributos",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"zCTI.Bootstrap_Atributos.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[]
+}

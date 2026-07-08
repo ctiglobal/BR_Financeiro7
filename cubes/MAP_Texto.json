@@ -1,0 +1,14 @@
+{
+	"@type":"Cube",
+	"Name":"MAP_Texto",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('MAP_Texto_Linha')"
+		},
+		{
+			"@id":"Dimensions('MAP_Texto_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}

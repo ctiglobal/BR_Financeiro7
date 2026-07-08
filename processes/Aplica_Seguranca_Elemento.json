@@ -1,0 +1,12 @@
+{
+	"@type":"Process",
+	"Name":"Aplica_Seguranca_Elemento",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Aplica_Seguranca_Elemento.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[]
+}

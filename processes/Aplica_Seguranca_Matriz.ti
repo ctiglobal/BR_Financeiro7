@@ -1,0 +1,30 @@
+#region Prolog
+# Matriz }CubeSecurity + element security [Def 16] - autorizado 06/07
+# (grupos ja criados por Aplica_Seguranca_Grupos)
+sCubos='DFS_Margem|DFS_Rateio_CPV|DFS_Receita_Cliente|STG_F01|STG_Razao|STG_MB51|STG_J1B3N|STG_Receita_Det|STG_Custo_Molecula|MAP_Classificacao|MAP_Texto|MAP_Centros|SYS_Parametros|SYS_Log_Processos';
+sRest=sCubos;
+WHILE( LONG(sRest)>0 );
+  nP=SCAN('|',sRest); IF(nP=0); sCb=sRest; sRest=''; ELSE; sCb=SUBST(sRest,1,nP-1); sRest=SUBST(sRest,nP+1,LONG(sRest)-nP); ENDIF;
+  CellPutS('ADMIN','}CubeSecurity',sCb,'GRP_CTI_Modeler');
+END;
+CellPutS('WRITE','}CubeSecurity','DFS_Margem','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','DFS_Rateio_CPV','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','DFS_Receita_Cliente','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','STG_F01','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','STG_Razao','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','STG_MB51','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','STG_J1B3N','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','STG_Receita_Det','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','STG_Custo_Molecula','GRP_EDGE_Operacao');
+CellPutS('WRITE','}CubeSecurity','MAP_Classificacao','GRP_EDGE_Operacao');
+CellPutS('WRITE','}CubeSecurity','MAP_Texto','GRP_EDGE_Operacao');
+CellPutS('WRITE','}CubeSecurity','MAP_Centros','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','SYS_Parametros','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','SYS_Log_Processos','GRP_EDGE_Operacao');
+CellPutS('READ','}CubeSecurity','DFS_Margem','GRP_ED_Consulta');
+CellPutS('READ','}CubeSecurity','DFS_Rateio_CPV','GRP_ED_Consulta');
+CellPutS('READ','}CubeSecurity','DFS_Receita_Cliente','GRP_ED_Consulta');
+CellPutS('NONE','}CubeSecurity','STG_Razao','GRP_ED_Consulta');
+CellPutS('READ','}CubeSecurity','DFS_Margem','GRP_Agente_IA');
+SecurityRefresh;
+#endregion

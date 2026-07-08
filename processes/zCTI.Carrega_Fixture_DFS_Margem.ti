@@ -1,0 +1,17 @@
+#region Prolog
+# infra de teste (Pacote 2): carrega fixture de celulas em DFS_Margem
+# layout: Versao,Cliente_Grupo,Segmento,Centro,Empresa,Ano,Mes,Estrutura_Margem,Medidas_Margem,valor
+# pula header e linhas de comentario (#). CellPutN (fixtures sao numericas).
+sArq = 'model_upload\' | pArquivo;
+IF( FileExists( sArq ) = 0 );
+  ProcessError;
+ENDIF;
+DatasourceNameForServer = sArq;
+DatasourceNameForClient = sArq;
+#endregion
+#region Data
+IF( SUBST( vVersao, 1, 1 ) @= '#' % vVersao @= 'Versao' % TRIM( vVersao ) @= '' );
+  ItemSkip;
+ENDIF;
+CellPutN( StringToNumber( vValor ), 'DFS_Margem', vVersao, vGrupo, vSegmento, vCentro, vEmpresa, vAno, vMes, vEstrutura, vMedida );
+#endregion

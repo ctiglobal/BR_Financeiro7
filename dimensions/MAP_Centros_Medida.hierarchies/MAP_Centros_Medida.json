@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"MAP_Centros_Medida",
+	"Elements":
+	[
+		{
+			"Name":"Centro_Destino",
+			"Type":"String"
+		},
+		{
+			"Name":"Ativo",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

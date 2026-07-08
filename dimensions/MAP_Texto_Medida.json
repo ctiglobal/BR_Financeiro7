@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"MAP_Texto_Medida",
+	"Hierarchies@Code.links":
+	[
+		"MAP_Texto_Medida.hierarchies/MAP_Texto_Medida.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('MAP_Texto_Medida')/Hierarchies('MAP_Texto_Medida')"
+	}
+}

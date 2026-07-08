@@ -1,0 +1,26 @@
+{
+	"@type":"Process",
+	"Name":"Atualiza_Dim_Centros",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Atualiza_Dim_Centros.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pAno",
+			"Prompt":"Ano",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pMes",
+			"Prompt":"Mes",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[]
+}

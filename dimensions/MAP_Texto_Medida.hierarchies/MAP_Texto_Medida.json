@@ -1,0 +1,28 @@
+{
+	"@type":"Hierarchy",
+	"Name":"MAP_Texto_Medida",
+	"Elements":
+	[
+		{
+			"Name":"Prefixo_Texto",
+			"Type":"String"
+		},
+		{
+			"Name":"Conta_Restricao",
+			"Type":"String"
+		},
+		{
+			"Name":"Destino_Estrutura",
+			"Type":"String"
+		},
+		{
+			"Name":"Destino_Segmento",
+			"Type":"String"
+		},
+		{
+			"Name":"Ativo",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

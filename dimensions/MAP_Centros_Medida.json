@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"MAP_Centros_Medida",
+	"Hierarchies@Code.links":
+	[
+		"MAP_Centros_Medida.hierarchies/MAP_Centros_Medida.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('MAP_Centros_Medida')/Hierarchies('MAP_Centros_Medida')"
+	}
+}

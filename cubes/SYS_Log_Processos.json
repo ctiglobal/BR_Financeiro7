@@ -1,0 +1,14 @@
+{
+	"@type":"Cube",
+	"Name":"SYS_Log_Processos",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('SYS_Log_Execucao')"
+		},
+		{
+			"@id":"Dimensions('SYS_Log_Medida')"
+		}
+	],
+	"Views@Code.links":[]
+}
